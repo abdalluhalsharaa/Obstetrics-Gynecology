@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Medical Exam Practice</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Amiri&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Main App Container -->
+    <div id="app">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <div class="home-hero">
+                <h1 class="bismillah">بسم الله الرحمن الرحيم</h1>
+                <div class="logo-container">
+                    <img src="logo.png" alt="Logo" class="app-logo" onerror="this.style.display='none'">
+                    <div id="random-quote" class="app-subtitle"></div>
+                </div>
+            </div>
+            <div class="nav-grid">
+                <button class="nav-btn nav-btn--lectures" onclick="openSection('lectures')">
+                    <div class="nav-icon-wrap"><span class="nav-icon">📚</span></div>
+                    <span class="nav-label">By Lectures</span>
+                </button>
+                <button class="nav-btn nav-btn--years" onclick="openSection('years')">
+                    <div class="nav-icon-wrap"><span class="nav-icon">📅</span></div>
+                    <span class="nav-label">By Years</span>
+                </button>
+                <button class="nav-btn nav-btn--wrong" onclick="openSection('wrong')">
+                    <div class="nav-icon-wrap"><span class="nav-icon">❌</span></div>
+                    <span class="nav-label">Wrong Questions</span>
+                </button>
+                <button class="nav-btn nav-btn--fav" onclick="openSection('favorites')">
+                    <div class="nav-icon-wrap"><span class="nav-icon">⭐</span></div>
+                    <span class="nav-label">Favorite Questions</span>
+                </button>
+                <button class="nav-btn nav-btn--search" onclick="openSection('search')">
+                    <div class="nav-icon-wrap"><span class="nav-icon">🔍</span></div>
+                    <span class="nav-label">Search</span>
+                </button>
+                <button class="nav-btn nav-btn--stats" onclick="toggleStatistics()">
+                    <div class="nav-icon-wrap"><span class="nav-icon">📊</span></div>
+                    <span class="nav-label">Statistics</span>
+                </button>
+                <button class="nav-btn nav-btn--settings" onclick="toggleSettings()">
+                    <div class="nav-icon-wrap"><span class="nav-icon">⚙️</span></div>
+                    <span class="nav-label">Settings</span>
+                </button>
+            </div>
+
+            <!-- Statistics Panel (hidden by default) -->
+            <div id="statistics-panel" class="hidden-panel">
+                <div class="panel-header">
+                    <h3>📊 Statistics</h3>
+                    <button class="btn-close" onclick="toggleStatistics()">✕</button>
+                </div>
+                <div id="stats-content"></div>
+                <div class="panel-actions">
+                    <button class="btn-danger" onclick="resetProgress()">Reset All Progress</button>
+                </div>
+            </div>
+
+            <!-- Settings Panel (hidden by default) -->
+            <div id="settings-panel" class="hidden-panel">
+                <div class="panel-header">
+                    <h3>⚙️ Settings</h3>
+                    <button class="btn-close" onclick="toggleSettings()">✕</button>
+                </div>
+                <div class="setting-item">
+                    <label>Dark Mode</label>
+                    <label class="switch">
+                        <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>Theme</label>
+                    <select id="theme-selector" onchange="changeTheme(this.value)">
+                        <option value="default">Default</option>
+                        <option value="glassmorphism">Glassmorphism</option>
+                        <option value="minimal-dark">Minimal Dark</option>
+                        <option value="medical-blue">Medical Blue</option>
+                        <option value="neon">Neon</option>
+                        <option value="paper">Paper Style</option>
+                        <option value="soft-ivory">Soft Ivory</option>
+                        <option value="cyber-grid">Cyber Grid</option>
+                        <option value="ghost">Ghost (Scary)</option>
+                        <option value="beach">Beach</option>
+                        <option value="desert">Desert & Badia</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Background Sound</label>
+                    <select id="sound-selector" onchange="changeSound(this.value)">
+                        <option value="none">None</option>
+                        <option value="fireplace">Fireplace</option>
+                        <option value="forest">Forest</option>
+                        <option value="rain-window">Rain on Window</option>
+                        <option value="beach">Beach</option>
+                        <option value="irbid-cafe">Irbid Cafe</option>
+                        <option value="rain-thunder">Rain & Thunder</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Volume</label>
+                    <input type="range" id="volume-control" min="0" max="100" value="50" onchange="changeVolume(this.value)">
+                </div>
+                <div class="setting-item">
+                    <label>Animations</label>
+                    <label class="switch">
+                        <input type="checkbox" id="animations-toggle" checked onchange="toggleAnimations()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selection Screen (Lectures/Years list) -->
+        <div id="selection-screen" class="screen">
+            <div class="screen-header">
+                <button class="btn-back" onclick="goHome()">← Back</button>
+                <h3 id="selection-title">Select</h3>
+            </div>
+            <div id="selection-list" class="selection-list"></div>
+            <div id="selection-footer" class="selection-footer hidden">
+                <div class="footer-info">
+                    <p id="selected-count">0 questions selected</p>
+                </div>
+                <div class="question-count-control">
+                    <label>Questions to attempt:</label>
+                    <div class="count-input-wrap">
+                        <input type="number" id="question-count-input" min="1" value="1">
+                        <span id="max-questions-label">/ 0</span>
+                    </div>
+                </div>
+
+                <!-- Mode Selection -->
+                <div class="mode-selection">
+                    <h4>Choose Mode</h4>
+                    <div class="mode-buttons">
+                        <button class="btn-mode" id="btn-training-mode" onclick="selectMode('training')">
+                            <span class="mode-icon">🎓</span>
+                            <span class="mode-label">Training Mode</span>
+                        </button>
+                        <button class="btn-mode" id="btn-exam-mode" onclick="selectMode('exam')">
+                            <span class="mode-icon">📝</span>
+                            <span class="mode-label">Real Exam Mode</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Direction Selection (One Way / Two Way) -->
+                <div id="direction-selection" class="direction-selection hidden">
+                    <h4>Navigation Direction</h4>
+                    <div class="direction-buttons">
+                        <button class="btn-direction" id="btn-oneway" onclick="selectDirection('oneway')">
+                            <span class="direction-icon">→</span>
+                            <span class="direction-label">One Way</span>
+                            <small>Cannot go back</small>
+                        </button>
+                        <button class="btn-direction" id="btn-twoway" onclick="selectDirection('twoway')">
+                            <span class="direction-icon">↔</span>
+                            <span class="direction-label">Two Way</span>
+                            <small>Can review previous</small>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Extra Time (Exam Mode Only) -->
+                <div id="timer-options" class="timer-options hidden">
+                    <h4>Timer Settings</h4>
+                    <div class="timer-info">
+                        <p>Base time: <strong id="base-time-display">0 min</strong></p>
+                        <p>Extra time: <strong id="extra-time-display">+0 min</strong></p>
+                        <p>Total: <strong id="total-time-display">0 min</strong></p>
+                    </div>
+                    <button class="btn-extra-time" id="btn-add-extra" onclick="addExtraTime()">+ Add 5 Extra Minutes</button>
+                </div>
+
+                <!-- Start Button -->
+                <div id="start-section" class="start-section hidden">
+                    <button class="btn-start" onclick="confirmStartExam()">🚀 Start Exam</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Screen -->
+        <div id="search-screen" class="screen">
+            <div class="screen-header">
+                <button class="btn-back" onclick="goHome()">← Back</button>
+                <h3>Search Questions</h3>
+            </div>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search questions, options, explanations..." oninput="performSearch()">
+                <select id="search-filter" onchange="performSearch()">
+                    <option value="all">All Years</option>
+                </select>
+            </div>
+            <div id="search-results" class="search-results"></div>
+        </div>
+
+        <!-- Exam Screen -->
+        <div id="exam-screen" class="screen">
+            <div class="exam-header">
+                <button class="btn-back" onclick="exitExam()">← Exit</button>
+                <div id="exam-timer" class="exam-timer hidden"></div>
+                <div id="exam-progress" class="exam-progress-badge"></div>
+            </div>
+            <div id="question-grid" class="question-grid hidden"></div>
+            <button class="btn-grid-toggle" onclick="toggleGrid()">
+                <span>☰</span> Grid
+            </button>
+            <div id="question-container" class="question-container"></div>
+            <div id="exam-nav" class="exam-nav"></div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <div class="screen-header">
+                <button class="btn-back" onclick="goHome()">← Home</button>
+                <h3>Results</h3>
+            </div>
+            <div id="results-waiting" class="hidden">
+                <div class="loading-spinner"></div>
+                <p id="waiting-message" class="waiting-msg">Processing your answers...</p>
+            </div>
+            <div id="results-content"></div>
+            <div id="results-review" class="hidden"></div>
+        </div>
+
+        <!-- Read-only Viewer -->
+        <div id="readonly-screen" class="screen">
+            <div class="screen-header">
+                <button class="btn-back" onclick="closeReadonly()">← Back</button>
+                <h3>Question Viewer</h3>
+            </div>
+            <div id="readonly-content"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Fireworks Canvas -->
+    <canvas id="fireworks-canvas" class="fireworks-canvas hidden"></canvas>
+
+    <!-- Audio Element -->
+    <audio id="bg-audio" loop></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
