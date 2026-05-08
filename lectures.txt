@@ -1,0 +1,102 @@
+Benign Ovarian Disease
+Question 1
+What is the most common benign ovarian tumor in reproductive age women?
+A) Serous cystadenoma.
+B) Mature cystic teratoma (dermoid cyst).
+C) Mucinous cystadenoma.
+D) Fibroma.
+E) Brenner tumor.
+Correct Answer: B) Mature cystic teratoma (dermoid cyst).
+Explanation: Dermoid cysts (mature cystic teratomas) are the most common benign ovarian tumors in women of reproductive age, accounting for approximately 20% of all ovarian neoplasms.
+5th Year - Vagus
+P45
+###
+Question 2
+Which tumor marker is most useful in monitoring epithelial ovarian cancer?
+A) AFP.
+B) CA-125.
+C) CEA.
+D) hCG.
+E) LDH.
+Correct Answer: B) CA-125.
+Explanation: CA-125 is elevated in approximately 80% of epithelial ovarian cancers and is used for monitoring treatment response and recurrence.
+5th Year - Vagus
+P48
+###
+Question 3
+What is the most appropriate initial investigation for a suspected ovarian mass?
+A) CT scan.
+B) MRI.
+C) Transvaginal ultrasound.
+D) Laparoscopy.
+E) PET scan.
+Correct Answer: C) Transvaginal ultrasound.
+Explanation: Transvaginal ultrasound is the first-line imaging modality for evaluating ovarian masses due to its high sensitivity and accessibility.
+5th Year - Vagus
+P50
+###
+/////
+Hypertensive Disorders in Pregnancy
+Question 4
+At what gestational age does preeclampsia typically present?
+A) Before 10 weeks.
+B) Between 10-20 weeks.
+C) After 20 weeks.
+D) Only during labor.
+E) Only postpartum.
+Correct Answer: C) After 20 weeks.
+Explanation: Preeclampsia is defined as new-onset hypertension and proteinuria occurring after 20 weeks of gestation.
+5th Year - Vagus
+P72
+###
+Question 5
+What is the definitive treatment for eclampsia?
+A) Magnesium sulfate.
+B) Labetalol.
+C) Delivery.
+D) Nifedipine.
+E) Hydralazine.
+Correct Answer: C) Delivery.
+Explanation: The definitive treatment for eclampsia is delivery of the fetus and placenta, as the condition resolves after removal of placental tissue.
+5th Year - Vagus
+P75
+###
+Question 6
+Which antihypertensive is first-line for acute severe hypertension in pregnancy?
+A) ACE inhibitors.
+B) Labetalol IV.
+C) Furosemide.
+D) Atenolol.
+E) Lisinopril.
+Correct Answer: B) Labetalol IV.
+Explanation: IV Labetalol is recommended as first-line treatment for acute severe hypertension in pregnancy due to its safety profile and efficacy.
+5th Year - Vagus
+P78
+###
+/////
+Normal Labor and Delivery
+Question 7
+What is the definition of the active phase of the first stage of labor?
+A) 0-3 cm dilation.
+B) 4-10 cm dilation.
+C) Full dilation to delivery.
+D) Delivery to placental expulsion.
+E) Onset of contractions.
+Correct Answer: B) 4-10 cm dilation.
+Explanation: The active phase begins at 4 cm cervical dilation and continues until full dilation (10 cm), characterized by regular contractions and progressive cervical change.
+5th Year - Vagus
+P90
+###
+Question 8
+What is the normal duration of the third stage of labor?
+A) Up to 5 minutes.
+B) Up to 15 minutes.
+C) Up to 30 minutes.
+D) Up to 60 minutes.
+E) Up to 90 minutes.
+Correct Answer: C) Up to 30 minutes.
+Explanation: The third stage of labor (from delivery of the baby to delivery of the placenta) normally takes up to 30 minutes. Active management can reduce this to 5-15 minutes.
+5th Year - Vagus
+P95
+###
+/////
