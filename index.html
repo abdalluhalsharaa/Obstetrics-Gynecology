@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Amiri&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Main App Container -->
     <div id="app">
         <!-- Home Screen -->
         <div id="home-screen" class="screen active">
@@ -53,7 +52,6 @@
                 </button>
             </div>
 
-            <!-- Statistics Panel (hidden by default) -->
             <div id="statistics-panel" class="hidden-panel">
                 <div class="panel-header">
                     <h3>📊 Statistics</h3>
@@ -65,7 +63,6 @@
                 </div>
             </div>
 
-            <!-- Settings Panel (hidden by default) -->
             <div id="settings-panel" class="hidden-panel">
                 <div class="panel-header">
                     <h3>⚙️ Settings</h3>
@@ -82,16 +79,16 @@
                     <label>Theme</label>
                     <select id="theme-selector" onchange="changeTheme(this.value)">
                         <option value="default">Default</option>
-                        <option value="glassmorphism">Glassmorphis🪟</option>
-                        <option value="minimal-dark">Minimal Dark🌃</option>
-                        <option value="medical-blue">Medical Blue👨‍⚕️</option>
-                        <option value="neon">Neon⚡</option>
-                        <option value="paper">Paper Style📜</option>
-                        <option value="soft-ivory">Soft Ivory🐘</option>
+                        <option value="glassmorphism">Glassmorphism</option>
+                        <option value="minimal-dark">Minimal Dark</option>
+                        <option value="medical-blue">Medical Blue</option>
+                        <option value="neon">Neon</option>
+                        <option value="paper">Paper Style</option>
+                        <option value="soft-ivory">Soft Ivory</option>
                         <option value="hackers">Hackers 👨‍💻</option>
-                        <option value="ghost">Ghost (Scary)👻</option>
-                        <option value="beach">Beach🏖</option>
-                        <option value="desert">Desert & Badia🏜</option>
+                        <option value="ghost">Ghost (Scary)</option>
+                        <option value="beach">Beach</option>
+                        <option value="desert">Desert & Badia</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -120,13 +117,19 @@
             </div>
         </div>
 
-        <!-- Selection Screen (Lectures/Years list) -->
+        <!-- Selection Screen مع حقل بحث المحاضرات -->
         <div id="selection-screen" class="screen">
             <div class="screen-header">
                 <button class="btn-back" onclick="goHome()">← Back</button>
                 <h3 id="selection-title">Select</h3>
             </div>
+            <!-- حقل البحث (يظهر فقط في المحاضرات) -->
+            <div id="selection-search-container" class="hidden" style="margin-bottom: 16px;">
+                <input type="text" id="selection-search" placeholder="ابحث عن اسم المحاضرة..." oninput="filterSelectionList()"
+                       style="width:100%; padding:12px 16px; border:2px solid var(--border); border-radius:var(--radius-sm); font-size:1rem;">
+            </div>
             <div id="selection-list" class="selection-list"></div>
+
             <div id="selection-footer" class="selection-footer hidden">
                 <div class="footer-info">
                     <p id="selected-count">0 questions selected</p>
@@ -138,8 +141,6 @@
                         <span id="max-questions-label">/ 0</span>
                     </div>
                 </div>
-
-                <!-- Mode Selection -->
                 <div class="mode-selection">
                     <h4>Choose Mode</h4>
                     <div class="mode-buttons">
@@ -153,8 +154,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- Direction Selection (One Way / Two Way) -->
                 <div id="direction-selection" class="direction-selection hidden">
                     <h4>Navigation Direction</h4>
                     <div class="direction-buttons">
@@ -170,8 +169,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- Extra Time (Exam Mode Only) -->
                 <div id="timer-options" class="timer-options hidden">
                     <h4>Timer Settings</h4>
                     <div class="timer-info">
@@ -181,10 +178,8 @@
                     </div>
                     <button class="btn-extra-time" id="btn-add-extra" onclick="addExtraTime()">+ Add 5 Extra Minutes</button>
                 </div>
-
-                <!-- Start Button -->
                 <div id="start-section" class="start-section hidden">
-                    <button class="btn-start" id="btn-start-exam">🚀 Start Exam</button>
+                    <button class="btn-start" id="btn-start-exam" onclick="confirmStartExam()">🚀 Start Exam</button>
                 </div>
             </div>
         </div>
@@ -211,7 +206,6 @@
                 <div id="exam-timer" class="exam-timer hidden"></div>
                 <div id="exam-progress" class="exam-progress-badge"></div>
             </div>
-            <!-- شبكة الأسئلة: أصبحت ظاهرة افتراضيًا (بدون hidden) -->
             <div id="question-grid" class="question-grid"></div>
             <button class="btn-grid-toggle" id="btn-grid-toggle" onclick="toggleGrid()">
                 <span>☰</span> Hide Grid
@@ -244,15 +238,10 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="toast hidden"></div>
-
-    <!-- Fireworks Canvas (سيُستخدم لكل الثيمات) -->
     <canvas id="fireworks-canvas" class="fireworks-canvas hidden"></canvas>
-
-    <!-- Audio Element -->
     <audio id="bg-audio" loop preload="auto"></audio>
 
     <script src="script.js"></script>
 </body>
-</html>
+                </html>
