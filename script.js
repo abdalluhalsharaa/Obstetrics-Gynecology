@@ -1,6 +1,6 @@
 /* ============================================
    MEDICAL EXAM PRACTICE - MAIN JAVASCRIPT
-   Modular, commented, and maintainable
+   مع إحصائيات عبر المستخدمين (نسب الإجابات)
    ============================================ */
 
 // ============================================
@@ -24,6 +24,81 @@ let extraTime = 0;
 let extraTimeAdded = false;
 
 // ============================================
+// GLOBAL STATISTICS (CROSS-USERS)
+// ============================================
+let globalStats = {};        // { "mode-questionId": { total, correct } }
+let userAttempts = {};       // { "mode-questionId": true } for current user
+
+// وضعيات الإحصائيات
+const STAT_MODES = {
+    LECTURE_TRAINING: 'lecture-training',
+    LECTURE_EXAM: 'lecture-exam',
+    YEAR_TRAINING: 'year-training',
+    YEAR_EXAM: 'year-exam'
+};
+
+// تحميل البيانات المحفوظة
+function loadGlobalStats() {
+    try {
+        const saved = localStorage.getItem('global-stats');
+        if (saved) globalStats = JSON.parse(saved);
+        else globalStats = {};
+    } catch(e) { globalStats = {}; }
+}
+
+function saveGlobalStats() {
+    localStorage.setItem('global-stats', JSON.stringify(globalStats));
+}
+
+function loadUserAttempts() {
+    try {
+        const saved = localStorage.getItem('user-attempts');
+        if (saved) userAttempts = JSON.parse(saved);
+        else userAttempts = {};
+    } catch(e) { userAttempts = {}; }
+}
+
+function saveUserAttempts() {
+    localStorage.setItem('user-attempts', JSON.stringify(userAttempts));
+}
+
+// تحديد مفتاح الإحصاء المناسب لسؤال معين ووضع معين
+function getStatKey(question, mode) {
+    // mode: 'training' or 'exam'
+    const source = (question.source === 'lecture') ? 'lecture' : 'year';
+    const modeKey = (mode === 'training') ? 'training' : 'exam';
+    return `${source}-${modeKey}-${question.id}`;
+}
+
+// الحصول على نسبة الصحة لسؤال (0-100)
+function getQuestionSuccessRate(question, mode) {
+    const key = getStatKey(question, mode);
+    const stats = globalStats[key];
+    if (!stats || stats.total === 0) return null;
+    return Math.round((stats.correct / stats.total) * 100);
+}
+
+// تحديث الإحصائيات إذا كانت هذه أول محاولة للمستخدم في هذا الوضع
+function updateStatsIfNewAttempt(question, mode, isCorrect) {
+    const key = getStatKey(question, mode);
+    const attemptKey = `${key}-${mode}`; // مفتاح تتبع المستخدم
+    if (userAttempts[attemptKey]) {
+        // سبق لهذه المحاولة – لا نحتسب مرة أخرى
+        return false;
+    }
+    // تسجيل المحاولة الحالية
+    userAttempts[attemptKey] = true;
+    saveUserAttempts();
+
+    // تحديث الإحصائيات المجمعة
+    if (!globalStats[key]) globalStats[key] = { total: 0, correct: 0 };
+    globalStats[key].total++;
+    if (isCorrect) globalStats[key].correct++;
+    saveGlobalStats();
+    return true;
+}
+
+// ============================================
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -31,6 +106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadProgress();
     loadFavorites();
     loadWrongQuestions();
+    loadGlobalStats();
+    loadUserAttempts();
     applySettings();
     await loadData();
     checkResumeExam();
@@ -473,10 +550,19 @@ function renderExam() {
 
     const container = document.getElementById('question-container');
     const isFav = favorites.includes(question.id);
+    
+    // عرض النسبة في وضع التدريب فقط
+    let rateHtml = '';
+    if (mode === 'training') {
+        const successRate = getQuestionSuccessRate(question, 'training');
+        if (successRate !== null) {
+            rateHtml = `<span style="margin-left: 12px; font-size: 0.8rem; background: var(--primary-soft); padding: 2px 8px; border-radius: 20px;">📊 ${successRate}% correct</span>`;
+        }
+    }
 
     container.innerHTML = `
         <div class="question-header">
-            <span class="question-number">Q${question.number || (currentIndex + 1)}</span>
+            <span class="question-number">Q${question.number || (currentIndex + 1)}${rateHtml}</span>
             <div class="question-actions">
                 <button class="icon-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${question.id}')" title="Favorite">✦</button>
                 <button class="icon-btn" onclick="showLocation('${question.batchName}', '${question.number || currentIndex + 1}', '${question.pageNumber}')" title="Location">📍</button>
@@ -586,6 +672,9 @@ function selectOption(optionIndex) {
         const question = currentExam.questions[currentIndex];
         const isCorrect = isAnswerCorrect(question, optionIndex);
 
+        // تحديث الإحصائيات العالمية (إذا كانت أول محاولة لهذا المستخدم)
+        updateStatsIfNewAttempt(question, 'training', isCorrect);
+
         if (isCorrect) {
             currentExam.showAnswer = true;
             showCelebration();
@@ -606,13 +695,22 @@ function selectOption(optionIndex) {
 
 function showAnswer() {
     if (!currentExam) return;
+    const question = currentExam.questions[currentExam.currentIndex];
+    const userAnswer = currentExam.answers[currentExam.currentIndex];
+    if (userAnswer !== null) {
+        const isCorrect = isAnswerCorrect(question, userAnswer);
+        // تحديث الإحصائيات في حالة التدريب
+        if (currentExam.mode === 'training') {
+            updateStatsIfNewAttempt(question, 'training', isCorrect);
+        }
+    }
     currentExam.showAnswer = true;
 
-    const question = currentExam.questions[currentExam.currentIndex];
+    const questionObj = currentExam.questions[currentExam.currentIndex];
     if (currentExam.firstAnswers[currentExam.currentIndex] !== null) {
-        if (!isAnswerCorrect(question, currentExam.firstAnswers[currentExam.currentIndex])) {
-            if (!wrongQuestions.includes(question.id)) {
-                wrongQuestions.push(question.id);
+        if (!isAnswerCorrect(questionObj, currentExam.firstAnswers[currentExam.currentIndex])) {
+            if (!wrongQuestions.includes(questionObj.id)) {
+                wrongQuestions.push(questionObj.id);
                 saveWrongQuestions();
             }
         }
@@ -728,6 +826,19 @@ function timeUp() {
 // ============================================
 function finishExam() {
     if (!currentExam) return;
+    
+    // تحديث الإحصائيات العالمية للمستخدم الحالي (وضع exam)
+    if (currentExam.mode === 'exam') {
+        const { questions, answers } = currentExam;
+        questions.forEach((q, idx) => {
+            const userAnswer = answers[idx];
+            if (userAnswer !== null) {
+                const isCorrect = isAnswerCorrect(q, userAnswer);
+                updateStatsIfNewAttempt(q, 'exam', isCorrect);
+            }
+        });
+    }
+    
     currentExam.submitted = true;
     currentExam.endTime = Date.now();
 
@@ -826,7 +937,7 @@ function showResults() {
 
 function reviewExam() {
     if (!currentExam) return;
-    const { questions, answers } = currentExam;
+    const { questions, answers, mode } = currentExam;
     const reviewDiv = document.getElementById('results-review');
     reviewDiv.classList.remove('hidden');
 
@@ -835,11 +946,25 @@ function reviewExam() {
         const userAnswer = answers[i];
         const correctIdx = getCorrectIndex(q);
         const isCorrect = userAnswer === correctIdx;
+        
+        // عرض النسبة في المراجعة (وضع exam فقط، أو في التدريب أيضاً)
+        let rateHtml = '';
+        if (mode === 'exam') {
+            const successRate = getQuestionSuccessRate(q, 'exam');
+            if (successRate !== null) {
+                rateHtml = `<span style="margin-left: 12px; font-size: 0.8rem; background: var(--primary-soft); padding: 2px 8px; border-radius: 20px;">📊 ${successRate}% users got it right</span>`;
+            }
+        } else {
+            const successRate = getQuestionSuccessRate(q, 'training');
+            if (successRate !== null) {
+                rateHtml = `<span style="margin-left: 12px; font-size: 0.8rem; background: var(--primary-soft); padding: 2px 8px; border-radius: 20px;">📊 ${successRate}% correct</span>`;
+            }
+        }
 
         html += `
             <div class="question-container mt-10" style="border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
                 <div class="question-header">
-                    <span class="question-number">Q${q.number || (i+1)}</span>
+                    <span class="question-number">Q${q.number || (i+1)}${rateHtml}</span>
                     <span style="color: ${isCorrect ? 'var(--success)' : 'var(--danger)'}; font-weight:600">
                         ${isCorrect ? '✓ Correct' : '✗ Wrong'}
                     </span>
@@ -1195,17 +1320,31 @@ function renderStatistics() {
     content.innerHTML = html;
 }
 
+// تعديل دالة resetProgress لتصفير البيانات الشخصية فقط دون الإحصائيات المجمعة
 function resetProgress() {
-    if (confirm('Are you sure you want to reset ALL progress? This cannot be undone.')) {
+    if (confirm('Are you sure you want to reset ALL personal progress? This will NOT delete global statistics (success rates).')) {
         progress = {};
         favorites = [];
         wrongQuestions = [];
+        // لا نمسح globalStats
+        resetUserAttemptsOnly(); // هذا يقوم بمسح userAttempts فقط (ويسأل)
         localStorage.removeItem('exam-progress');
         localStorage.removeItem('exam-favorites');
         localStorage.removeItem('exam-wrong');
         localStorage.removeItem('exam-state');
-        showToast('All progress has been reset');
-        renderStatistics();
+        showToast('Personal progress reset. Global stats remain.');
+        if (document.getElementById('statistics-panel').classList.contains('visible')) renderStatistics();
+    }
+}
+
+function resetUserAttemptsOnly() {
+    if (confirm('Reset your personal answer history? (Global statistics will not be affected)')) {
+        userAttempts = {};
+        saveUserAttempts();
+        showToast('Your personal history has been reset. Future answers will contribute to global stats again.');
+        if (currentExam && !currentExam.submitted) renderExam();
+        else if (document.getElementById('exam-screen').classList.contains('active')) renderExam();
+        else if (document.getElementById('results-screen').classList.contains('active')) reviewExam();
     }
 }
 
