@@ -74,3 +74,192 @@ Explanation: Nifedipine (calcium channel blocker) is recommended as first-line t
 P210
 ###
 /////
+Iris - 5th year
+
+Which of the following statements regarding Hirschsprung disease is 
+INCORRECT?
+A) It results from the arrest of craniocaudal migration of neural crest cells.
+B) It is commonly associated with premature birth.
+C) Delayed passage of meconium beyond 48 hours is a hallmark sign.
+D) Diagnosis is confirmed by rectal biopsy showing aganglionosis.
+E) Short-segment disease is the most common variant.
+Correct Answer: B) It is commonly associated with premature birth.
+Explanation: Hirschsprung disease is primarily a disease of full-term infants. Delayed passage of 
+meconium in a premature infant is more commonly associated with meconium plug syndrome or 
+immature bowel function, not Hirschsprung disease.
+Iris - 5th year
+P(35)
+###
+A 70-year-old male sustains a high-voltage electrical burn. On admission, his 
+urine is dark in color, and urine output is 30 mL/hr. Compartment pressure in 
+the affected limb is 20 mmHg. What is the main complication that should be 
+anticipated and treated in this patient?
+A) Acute renal failure
+B) Cardiac arrhythmia
+C) Compartment syndrome requiring fasciotomy
+D) Curling's ulcer
+E) Pulmonary embolism
+Correct Answer: A) Acute renal failure
+Explanation: Dark urine after a high-voltage electrical burn suggests myoglobinuria due to 
+rhabdomyolysis. This places the patient at high risk of acute kidney injury and requires prompt 
+fluid resuscitation and monitoring.
+Iris - 5th year
+P(32)
+###
+A trauma patient opens their eyes to speech, is confused but conversant, and 
+localizes to painful stimuli. What is the calculated Glasgow Coma Scale (GCS) 
+score?
+A) 10
+B) 11
+C) 12
+D) 13
+E) 14
+Correct Answer: C) 12
+Explanation: Eyes open to speech (3) + Confused conversation (4) + Localizes pain (5) = 12.
+Iris - 5th year
+P(65)
+###
+/////
+Vagus - 4th year
+
+Which antibody is pathognomonic for the diagnosis of Graves' disease?
+A) Anti-thyroid peroxidase (Anti-TPO)
+B) Anti-thyroglobulin
+C) Thyroid-stimulating immunoglobulin (TSI)
+D) Anti-mitochondrial antibody
+E) Anti-smooth muscle antibody
+Correct Answer: C) Thyroid-stimulating immunoglobulin (TSI)
+Explanation: TSI (also known as TSH receptor antibodies or TRAb) stimulates the TSH receptor, 
+causing the hyperthyroidism characteristic of Graves' disease.
+Vagus - 4th year
+P(43)
+###
+A patient typically develops opacification of the hemithorax on chest X-ray 
+following a pneumonectomy due to lung cancer. This is primarily due to:
+A) Massive pleural effusion
+B) Post-pneumonectomy space filling with fluid and subsequent 
+fibrosis/atelectasis
+C) Pneumonia
+D) Chylothorax
+E) Hemothorax
+Correct Answer: B) Post-pneumonectomy space filling with fluid and 
+subsequent fibrosis/atelectasis
+Explanation: After pneumonectomy, the post-pneumonectomy space gradually fills with fluid, and 
+the mediastinum shifts toward the operated side. This expected postoperative change leads to 
+progressive hemithorax opacification on chest X-ray.
+Vagus - 4th year
+P(36)
+###
+/////
+Serotonin - 4th year
+
+A female patient with metastatic malignancy presents with hypotension, 
+distended neck veins, and muffled heart sounds. This clinical triad is indicative 
+of which type of shock?
+A) Hypovolemic shock
+B) Cardiogenic shock
+C) Obstructive shock
+D) Distributive shock
+E) Neurogenic shock
+Correct Answer: C) Obstructive shock
+Explanation: The symptoms describe Beck's Triad, suggestive of cardiac tamponade. Tamponade 
+prevents diastolic filling, leading to obstructive shock.
+Serotonin - 4th year
+P(63)
+###
+/////
+WA - 5th year
+
+Iatrogenic injury to which nerve during axillary dissection results in a winged 
+scapula?
+A) Thoracodorsal nerve
+B) Long thoracic nerve
+C) Intercostobrachial nerve
+D) Medial pectoral nerve
+E) Lateral pectoral nerve
+Correct Answer: B) Long thoracic nerve
+Explanation: The long thoracic nerve innervates the serratus anterior muscle. Paralysis of this 
+muscle leads to medial winging of the scapula.
+WA - 5th year
+P(36)
+###
+What is the anatomical relationship of the superficial inguinal ring to the pubic 
+tubercle?
+A) Inferior and lateral
+B) Superior and medial
+C) Superior and lateral
+D) Inferior and medial
+E) Directly posterior
+Correct Answer: C) Superior and lateral
+Explanation: The superficial inguinal ring is a triangular opening in the external oblique 
+aponeurosis, located superolateral to the pubic tubercle.
+WA - 5th year
+P(439)
+###
+At which vertebral level does the esophagus pass through the diaphragm?
+A) T8
+B) T10
+C) T12
+D) L1
+E) L2
+Correct Answer: B) T10
+Explanation: The esophageal hiatus is at T10. (IVC is at T8, Aorta is at T12).
+WA - 5th year
+P(643)
+###
+What is the most common cause of esophageal perforation?
+A) Boerhaave syndrome
+B) Foreign body ingestion
+C) Trauma
+D) Iatrogenic (Endoscopy)
+E) Malignancy
+Correct Answer: D) Iatrogenic (Endoscopy)
+Explanation: Instrumentation (EGD, dilation) is the leading cause of esophageal perforation.
+WA - 5th year
+P(243)
+###
+/////
+Aorta - 5th year
+
+What is the surgical procedure of choice for the correction of congenital 
+duodenal atresia?
+A) Duodeno-duodenostomy
+B) Pyloromyotomy
+C) Gastrojejunostomy
+D) Whipple procedure
+E) Ladd's procedure
+Correct Answer: A) Duodeno-duodenostomy
+Explanation: A diamond-shaped duodeno-duodenostomy (or sometimes duodeno-jejunostomy) is 
+the standard repair to bypass the obstruction.
+Aorta - 5th year
+P(342)
+###
+A patient presents with left lower quadrant pain and fever. What is the gold 
+standard imaging modality to confirm the diagnosis of acute diverticulitis?
+A) Barium Enema
+B) Colonoscopy
+C) CT Abdomen and Pelvis with contrast
+D) Abdominal Ultrasound
+E) Plain Abdominal X-ray
+Correct Answer: C) CT Abdomen and Pelvis with contrast
+Explanation: CT abdomen and pelvis with contrast is the preferred imaging study for suspected 
+acute diverticulitis because it confirms the diagnosis and helps assess complications such as abscess 
+or perforation.
+Aorta - 5th year
+P(64)
+###
+An elderly male with a history of smoking presents with severe back pain. He has 
+a known history of peptic ulcer disease, but the pain is constant and unrelated 
+to food. On examination, a pulsatile abdominal mass is noted. What is the most 
+likely diagnosis?
+A) Perforated Peptic Ulcer
+B) Acute Pancreatitis
+C) Symptomatic Abdominal Aortic Aneurysm (AAA)
+D) Renal Colic
+E) Diverticulitis
+Correct Answer: C) Symptomatic Abdominal Aortic Aneurysm (AAA)
+Explanation: Back pain combined with a pulsatile abdominal mass in an elderly smoker is highly 
+suggestive of a symptomatic or rupturing AAA. The PUD history is a distractor.
+Aorta - 5th year
+P(102)
+###
