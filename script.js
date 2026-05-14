@@ -1,25 +1,25 @@
 /* ============================================
    MEDICAL EXAM PRACTICE - MAIN JAVASCRIPT
-   Modular, commented, and maintainable
+   (نسخة نهائية: خلط كامل، مفضلة وموقع في كل مكان، احتفالية موحدة)
    ============================================ */
 
 // ============================================
 // GLOBAL STATE
 // ============================================
-let allLectures = [];      // Parsed lectures data
-let allYears = [];         // Parsed years data
-let allQuestions = [];     // All questions combined for search
-let currentExam = null;    // Current exam session state
-let settings = {};         // User settings
-let favorites = [];        // Favorite question IDs
-let wrongQuestions = [];   // Wrong question IDs
-let progress = {};         // Progress tracking
+let allLectures = [];
+let allYears = [];
+let allQuestions = [];
+let currentExam = null;
+let settings = {};
+let favorites = [];
+let wrongQuestions = [];
+let progress = {};
 
 // Selection state
 let selectedGroups = [];
 let currentGroups = [];
-let selectedMode = null;       // 'training' or 'exam'
-let selectedDirection = null;  // 'oneway' or 'twoway'
+let selectedMode = null;
+let selectedDirection = null;
 let extraTime = 0;
 let extraTimeAdded = false;
 
@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkResumeExam();
     displayRandomQuote();
     updateStartButtonIcon();
+    buildModals();
 });
 
 function displayRandomQuote() {
@@ -126,7 +127,8 @@ function parseQuestion(block, defaultBatch) {
         let questionNumber = '';
         let questionText = '';
         let options = [];
-        let correctAnswer = '';
+        let correctAnswerLetter = '';
+        let correctAnswerText = '';
         let explanation = '';
         let batchName = defaultBatch;
         let pageNumber = '';
@@ -152,11 +154,18 @@ function parseQuestion(block, defaultBatch) {
 
         while (i < lines.length) {
             if (lines[i].match(/^Correct Answer:/i)) {
-                correctAnswer = lines[i].replace(/^Correct Answer:\s*/i, '').trim();
+                correctAnswerLetter = lines[i].replace(/^Correct Answer:\s*/i, '').trim().charAt(0);
                 i++;
                 break;
             }
             i++;
+        }
+
+        const correctOption = options.find(opt => opt.startsWith(correctAnswerLetter + ')'));
+        if (correctOption) {
+            correctAnswerText = correctOption.substring(2).trim();
+        } else {
+            correctAnswerText = '';
         }
 
         let explanationLines = [];
@@ -189,8 +198,9 @@ function parseQuestion(block, defaultBatch) {
             id,
             number: questionNumber,
             text: questionText,
-            options,
-            correctAnswer,
+            optionsRaw: options,
+            correctAnswerLetter,
+            correctAnswerText,
             explanation,
             batchName,
             pageNumber,
@@ -210,7 +220,36 @@ function isMetadataLine(line) {
 }
 
 // ============================================
-// NAVIGATION AND SCREEN MANAGEMENT
+// خلط الخيارات
+// ============================================
+function shuffleOptions(question) {
+    const opts = question.optionsRaw.map((opt, idx) => {
+        const letter = opt.charAt(0);
+        const text = opt.substring(2).trim();
+        return { letter, text, originalIndex: idx };
+    });
+    for (let i = opts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [opts[i], opts[j]] = [opts[j], opts[i]];
+    }
+    const newOptions = [];
+    const newLetters = ['A', 'B', 'C', 'D', 'E'];
+    opts.forEach((opt, newIdx) => {
+        const newLetter = newLetters[newIdx];
+        newOptions.push(`${newLetter}) ${opt.text}`);
+        opt.newLetter = newLetter;
+    });
+    const correctNew = newOptions.find(opt => opt.substring(2).trim() === question.correctAnswerText);
+    const correctNewLetter = correctNew ? correctNew.charAt(0) : 'A';
+    return {
+        shuffledOptions: newOptions,
+        mappedCorrectLetter: correctNewLetter,
+        originalCorrectText: question.correctAnswerText
+    };
+}
+
+// ============================================
+// NAVIGATION
 // ============================================
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -244,7 +283,7 @@ function openSection(section) {
 }
 
 // ============================================
-// SELECTION SCREEN WITH LECTURE SEARCH
+// SELECTION SCREEN
 // ============================================
 function resetSelectionState() {
     selectedGroups = [];
@@ -261,7 +300,6 @@ function showSelectionScreen(groups, title) {
     showScreen('selection-screen');
     document.getElementById('selection-title').textContent = title;
 
-    // إظهار أو إخفاء حقل البحث (فقط للمحاضرات)
     const searchContainer = document.getElementById('selection-search-container');
     const searchInput = document.getElementById('selection-search');
     if (groups === allLectures) {
@@ -303,7 +341,6 @@ function showSelectionScreen(groups, title) {
     document.querySelectorAll('.btn-direction').forEach(b => b.classList.remove('active'));
 }
 
-// تصفية المحاضرات حسب النص
 function filterSelectionList() {
     const searchTerm = document.getElementById('selection-search').value.toLowerCase().trim();
     const items = document.querySelectorAll('#selection-list .selection-item');
@@ -347,7 +384,7 @@ function updateSelectionFooter() {
 }
 
 // ============================================
-// MODE AND DIRECTION SELECTION
+// MODE AND DIRECTION
 // ============================================
 function selectMode(mode) {
     selectedMode = mode;
@@ -403,6 +440,9 @@ function addExtraTime() {
     btn.textContent = '✓ Extra 5 Minutes Added';
 }
 
+// ============================================
+// بدء الامتحان: تجميع الأسئلة من المجموعات المختارة وخلطها عشوائياً بالكامل
+// ============================================
 function confirmStartExam() {
     if (!selectedMode || !selectedDirection) {
         showToast('Please select mode and direction');
@@ -420,17 +460,31 @@ function confirmStartExam() {
         questions = questions.concat(currentGroups[idx].questions);
     });
 
-    questions = shuffleArray(questions).slice(0, count);
+    // خلط كامل للأسئلة (لضمان عدم تتابع سؤالين من نفس المحاضرة)
+    questions = shuffleArray(questions);
+    // أخذ العدد المطلوب
+    questions = questions.slice(0, count);
+
+    // لكل سؤال، خلط خياراته وتخزين النسخة المخلوطة
+    const processedQuestions = questions.map(q => {
+        const shuffled = shuffleOptions(q);
+        return {
+            ...q,
+            shuffledOptions: shuffled.shuffledOptions,
+            shuffledCorrectLetter: shuffled.mappedCorrectLetter,
+            originalCorrectText: q.correctAnswerText
+        };
+    });
 
     currentExam = {
         mode: selectedMode,
         direction: selectedDirection,
-        questions,
+        questions: processedQuestions,
         currentIndex: 0,
-        answers: new Array(questions.length).fill(null),
-        firstAnswers: new Array(questions.length).fill(null),
+        answers: new Array(processedQuestions.length).fill(null),
+        firstAnswers: new Array(processedQuestions.length).fill(null),
         startTime: Date.now(),
-        totalTime: (questions.length + extraTime) * 60 * 1000,
+        totalTime: (processedQuestions.length + extraTime) * 60 * 1000,
         submitted: false,
         showAnswer: false
     };
@@ -445,12 +499,12 @@ function confirmStartExam() {
 }
 
 // ============================================
-// EXAM RENDERING
+// RENDER EXAM
 // ============================================
 function renderExam() {
     if (!currentExam) return;
 
-    const { mode, direction, questions, currentIndex, answers } = currentExam;
+    const { mode, questions, currentIndex, answers } = currentExam;
     const question = questions[currentIndex];
 
     const remaining = questions.length - currentIndex;
@@ -459,7 +513,8 @@ function renderExam() {
     if (mode === 'training') {
         const correct = currentExam.firstAnswers.filter((a, i) => {
             if (a === null) return false;
-            return isAnswerCorrect(questions[i], a);
+            const selectedText = questions[i].shuffledOptions[a].substring(2).trim();
+            return selectedText === questions[i].originalCorrectText;
         }).length;
         const answered = currentExam.firstAnswers.filter(a => a !== null).length;
         const pct = answered > 0 ? Math.round((correct / answered) * 100) : 0;
@@ -474,23 +529,26 @@ function renderExam() {
     const container = document.getElementById('question-container');
     const isFav = favorites.includes(question.id);
 
+    const shuffledOpts = question.shuffledOptions;
+
     container.innerHTML = `
         <div class="question-header">
             <span class="question-number">Q${question.number || (currentIndex + 1)}</span>
             <div class="question-actions">
                 <button class="icon-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${question.id}')" title="Favorite">✦</button>
                 <button class="icon-btn" onclick="showLocation('${question.batchName}', '${question.number || currentIndex + 1}', '${question.pageNumber}')" title="Location">📍</button>
+                <button class="icon-btn" onclick="openExamSettings()" title="Settings">⚙️</button>
             </div>
         </div>
         <p class="question-text">${question.text}</p>
         <div class="options-list">
-            ${question.options.map((opt, i) => {
+            ${shuffledOpts.map((opt, i) => {
                 let cls = 'option-btn';
                 if (answers[currentIndex] === i) cls += ' selected';
                 if (mode === 'training' && currentExam.showAnswer) {
-                    const correctIdx = getCorrectIndex(question);
-                    if (i === correctIdx) cls += ' correct';
-                    else if (answers[currentIndex] === i && i !== correctIdx) cls += ' wrong';
+                    const isCorrectOpt = (opt.substring(2).trim() === question.originalCorrectText);
+                    if (isCorrectOpt) cls += ' correct';
+                    else if (answers[currentIndex] === i && !isCorrectOpt) cls += ' wrong';
                 }
                 return `<button class="${cls}" onclick="selectOption(${i})">${opt}</button>`;
             }).join('')}
@@ -513,7 +571,9 @@ function renderGrid() {
         if (i === currentIndex) cls += ' current';
         else if (answers[i] !== null) {
             if (mode === 'training' && firstAnswers[i] !== null) {
-                cls += isAnswerCorrect(q, firstAnswers[i]) ? ' answered' : ' wrong';
+                const selectedText = q.shuffledOptions[firstAnswers[i]].substring(2).trim();
+                const isCorrect = (selectedText === q.originalCorrectText);
+                cls += isCorrect ? ' answered' : ' wrong';
             } else {
                 cls += ' answered';
             }
@@ -568,7 +628,7 @@ function renderExamNav() {
 }
 
 // ============================================
-// EXAM INTERACTION LOGIC
+// EXAM INTERACTION
 // ============================================
 function selectOption(optionIndex) {
     if (!currentExam || currentExam.submitted) return;
@@ -584,7 +644,8 @@ function selectOption(optionIndex) {
 
     if (mode === 'training') {
         const question = currentExam.questions[currentIndex];
-        const isCorrect = isAnswerCorrect(question, optionIndex);
+        const selectedText = question.shuffledOptions[optionIndex].substring(2).trim();
+        const isCorrect = (selectedText === question.originalCorrectText);
 
         if (isCorrect) {
             currentExam.showAnswer = true;
@@ -606,18 +667,19 @@ function selectOption(optionIndex) {
 
 function showAnswer() {
     if (!currentExam) return;
-    currentExam.showAnswer = true;
-
     const question = currentExam.questions[currentExam.currentIndex];
-    if (currentExam.firstAnswers[currentExam.currentIndex] !== null) {
-        if (!isAnswerCorrect(question, currentExam.firstAnswers[currentExam.currentIndex])) {
+    const userAnswerIdx = currentExam.answers[currentExam.currentIndex];
+    if (userAnswerIdx !== null) {
+        const selectedText = question.shuffledOptions[userAnswerIdx].substring(2).trim();
+        const isCorrect = (selectedText === question.originalCorrectText);
+        if (!isCorrect && currentExam.mode === 'training') {
             if (!wrongQuestions.includes(question.id)) {
                 wrongQuestions.push(question.id);
                 saveWrongQuestions();
             }
         }
     }
-
+    currentExam.showAnswer = true;
     saveExamState();
     renderExam();
 }
@@ -672,21 +734,75 @@ function toggleGrid() {
         : '<span>☰</span> Hide Grid';
 }
 
+// ============================================
+// EXIT EXAM WITH MODAL
+// ============================================
 function exitExam() {
-    if (currentExam && !currentExam.submitted) {
-        if (confirm('Are you sure you want to exit? Your progress will be saved.')) {
-            saveExamState();
-            currentExam = null;
-            goHome();
-        }
-    } else {
+    if (!currentExam || currentExam.submitted) {
         currentExam = null;
         goHome();
+        return;
     }
+    showExitConfirmModal();
+}
+
+function showExitConfirmModal() {
+    const modal = document.getElementById('custom-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+    
+    modalTitle.textContent = 'خروج من الامتحان';
+    modalBody.innerHTML = '<p>هل أنت متأكد من رغبتك بالخروج من الامتحان؟</p>';
+    modalButtons.innerHTML = `
+        <button class="btn-secondary" id="modal-no">لا</button>
+        <button class="btn-primary" id="modal-yes">نعم</button>
+    `;
+    modal.classList.remove('hidden');
+    
+    document.getElementById('modal-yes').onclick = () => {
+        modal.classList.add('hidden');
+        showSaveProgressModal();
+    };
+    document.getElementById('modal-no').onclick = () => {
+        modal.classList.add('hidden');
+    };
+}
+
+function showSaveProgressModal() {
+    const modal = document.getElementById('custom-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+    
+    modalTitle.textContent = 'حفظ التقدم';
+    modalBody.innerHTML = '<p>هل تود حفظ تقدمك على الأسئلة التي أجبت عليها؟</p>';
+    modalButtons.innerHTML = `
+        <button class="btn-secondary" id="modal-cancel">العودة للامتحان</button>
+        <button class="btn-danger" id="modal-no-save">لا والخروج</button>
+        <button class="btn-primary" id="modal-save">نعم والخروج</button>
+    `;
+    modal.classList.remove('hidden');
+    
+    document.getElementById('modal-save').onclick = () => {
+        modal.classList.add('hidden');
+        saveExamState();
+        currentExam = null;
+        goHome();
+    };
+    document.getElementById('modal-no-save').onclick = () => {
+        modal.classList.add('hidden');
+        clearExamState();
+        currentExam = null;
+        goHome();
+    };
+    document.getElementById('modal-cancel').onclick = () => {
+        modal.classList.add('hidden');
+    };
 }
 
 // ============================================
-// TIMER LOGIC
+// TIMER
 // ============================================
 let timerInterval = null;
 
@@ -724,7 +840,7 @@ function timeUp() {
 }
 
 // ============================================
-// FINISH EXAM AND RESULTS
+// FINISH EXAM & RESULTS
 // ============================================
 function finishExam() {
     if (!currentExam) return;
@@ -787,8 +903,11 @@ function showResults() {
 
     let correct = 0;
     const answersToCheck = mode === 'exam' ? answers : firstAnswers;
-    answersToCheck.forEach((ans, i) => {
-        if (ans !== null && isAnswerCorrect(questions[i], ans)) correct++;
+    answersToCheck.forEach((ansIdx, i) => {
+        if (ansIdx !== null) {
+            const selectedText = questions[i].shuffledOptions[ansIdx].substring(2).trim();
+            if (selectedText === questions[i].originalCorrectText) correct++;
+        }
     });
 
     const incorrect = answeredCount - correct;
@@ -826,30 +945,40 @@ function showResults() {
 
 function reviewExam() {
     if (!currentExam) return;
-    const { questions, answers } = currentExam;
+    const { questions, answers, mode } = currentExam;
     const reviewDiv = document.getElementById('results-review');
     reviewDiv.classList.remove('hidden');
 
     let html = '<h3 class="mt-20" style="text-align:left">Review</h3>';
     questions.forEach((q, i) => {
-        const userAnswer = answers[i];
-        const correctIdx = getCorrectIndex(q);
-        const isCorrect = userAnswer === correctIdx;
+        const userAnswerIdx = answers[i];
+        let isCorrect = false;
+        let selectedText = '';
+        if (userAnswerIdx !== null) {
+            selectedText = q.shuffledOptions[userAnswerIdx].substring(2).trim();
+            isCorrect = (selectedText === q.originalCorrectText);
+        }
+        const correctIdx = q.shuffledOptions.findIndex(opt => opt.substring(2).trim() === q.originalCorrectText);
+        const isFav = favorites.includes(q.id);
 
         html += `
             <div class="question-container mt-10" style="border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
                 <div class="question-header">
                     <span class="question-number">Q${q.number || (i+1)}</span>
+                    <div class="question-actions">
+                        <button class="icon-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${q.id}'); reviewExam();" title="Favorite">✦</button>
+                        <button class="icon-btn" onclick="showLocation('${q.batchName}', '${q.number || i+1}', '${q.pageNumber}')" title="Location">📍</button>
+                    </div>
                     <span style="color: ${isCorrect ? 'var(--success)' : 'var(--danger)'}; font-weight:600">
                         ${isCorrect ? '✓ Correct' : '✗ Wrong'}
                     </span>
                 </div>
                 <p class="question-text">${q.text}</p>
                 <div class="options-list">
-                    ${q.options.map((opt, oi) => {
+                    ${q.shuffledOptions.map((opt, oi) => {
                         let cls = 'option-btn';
                         if (oi === correctIdx) cls += ' correct';
-                        if (oi === userAnswer && oi !== correctIdx) cls += ' wrong';
+                        if (oi === userAnswerIdx && oi !== correctIdx) cls += ' wrong';
                         return `<div class="${cls}" style="cursor:default">${opt}</div>`;
                     }).join('')}
                 </div>
@@ -864,7 +993,7 @@ function reviewExam() {
 }
 
 // ============================================
-// SEARCH (QUESTIONS)
+// SEARCH
 // ============================================
 function populateSearchFilter() {
     const filter = document.getElementById('search-filter');
@@ -885,7 +1014,7 @@ function performSearch() {
     }
 
     let results = allQuestions.filter(q => {
-        const searchText = (q.text + ' ' + q.options.join(' ') + ' ' + q.explanation).toLowerCase();
+        const searchText = (q.text + ' ' + q.optionsRaw.join(' ') + ' ' + q.explanation).toLowerCase();
         const matchesQuery = searchText.includes(query);
         const matchesFilter = filter === 'all' || q.batchName.includes(filter) || q.groupName.includes(filter);
         return matchesQuery && matchesFilter;
@@ -907,27 +1036,30 @@ function performSearch() {
 }
 
 // ============================================
-// READ-ONLY VIEWER
+// READ-ONLY VIEWER (مع مفضلة وموقع)
 // ============================================
 function openReadonly(questionId) {
     const question = allQuestions.find(q => q.id === questionId);
     if (!question) return;
 
+    const shuffled = shuffleOptions(question);
+    
     showScreen('readonly-screen');
     const content = document.getElementById('readonly-content');
-    const correctIdx = getCorrectIndex(question);
+    const isFav = favorites.includes(question.id);
+    const correctIdx = shuffled.shuffledOptions.findIndex(opt => opt.substring(2).trim() === question.correctAnswerText);
 
     content.innerHTML = `
         <div class="question-header">
             <span class="question-number">Question ${question.number}</span>
             <div class="question-actions">
-                <button class="icon-btn ${favorites.includes(question.id) ? 'active' : ''}" onclick="toggleFavorite('${question.id}'); openReadonly('${question.id}');" title="Favorite">✦</button>
+                <button class="icon-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${question.id}'); openReadonly('${question.id}');" title="Favorite">✦</button>
                 <button class="icon-btn" onclick="showLocation('${question.batchName}', '${question.number}', '${question.pageNumber}')" title="Location">📍</button>
             </div>
         </div>
         <p class="question-text">${question.text}</p>
         <div class="options-list">
-            ${question.options.map((opt, i) => `
+            ${shuffled.shuffledOptions.map((opt, i) => `
                 <div class="option-btn ${i === correctIdx ? 'correct' : ''}" style="cursor:default">${opt}</div>
             `).join('')}
         </div>
@@ -950,7 +1082,7 @@ function closeReadonly() {
 }
 
 // ============================================
-// WRONG QUESTIONS
+// WRONG & FAVORITES LISTS (ظهور زر المفضلة في القائمة نفسها)
 // ============================================
 function openWrongQuestions() {
     const questions = allQuestions.filter(q => wrongQuestions.includes(q.id));
@@ -958,34 +1090,71 @@ function openWrongQuestions() {
         showToast('No wrong questions yet!');
         return;
     }
+    showQuestionListScreen(questions, 'Wrong Questions');
+}
 
+function openFavoriteQuestions() {
+    const questions = allQuestions.filter(q => favorites.includes(q.id));
+    if (questions.length === 0) {
+        showToast('No favorite questions yet!');
+        return;
+    }
+    showQuestionListScreen(questions, 'Favorite Questions');
+}
+
+function showQuestionListScreen(questions, title) {
     showScreen('selection-screen');
-    document.getElementById('selection-title').textContent = 'Wrong Questions';
+    document.getElementById('selection-title').textContent = title;
     document.getElementById('selection-search-container').classList.add('hidden');
-
     const list = document.getElementById('selection-list');
-    list.innerHTML = `
-        <div style="text-align:center; padding:20px;">
-            <p style="font-size:1.1rem; font-weight:600; margin-bottom:16px;">${questions.length} wrong questions available</p>
-            <div class="mode-buttons" style="max-width:400px; margin:0 auto;">
-                <button class="btn-mode" onclick="startSpecialExam(getWrongQuestionObjects(), 'training', 'twoway')">
-                    <span class="mode-icon">🎓</span>
-                    <span class="mode-label">Training</span>
-                </button>
-                <button class="btn-mode" onclick="startSpecialExam(getWrongQuestionObjects(), 'exam', 'oneway')">
-                    <span class="mode-icon">📝</span>
-                    <span class="mode-label">Exam</span>
-                </button>
+    list.innerHTML = '';
+    
+    questions.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = 'selection-item';
+        const shortText = q.text.length > 100 ? q.text.substring(0, 100) + '...' : q.text;
+        const isFav = favorites.includes(q.id);
+        item.innerHTML = `
+            <div style="flex:1; padding: 10px;">
+                <strong>Q${q.number}:</strong> ${shortText}
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">📚 ${q.batchName}</div>
             </div>
-            <button class="btn-danger mt-20" onclick="clearWrongQuestions()">Clear Wrong Questions</button>
-        </div>
-    `;
-
+            <div class="question-actions" style="display:flex; gap:8px;">
+                <button class="icon-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${q.id}'); showQuestionListScreen(questions, '${title}');" title="Favorite">✦</button>
+                <button class="icon-btn" onclick="event.stopPropagation(); showLocation('${q.batchName}', '${q.number}', '${q.pageNumber}')" title="Location">📍</button>
+            </div>
+        `;
+        item.onclick = () => openReadonly(q.id);
+        list.appendChild(item);
+    });
+    
     document.getElementById('selection-footer').classList.add('hidden');
 }
 
-function getWrongQuestionObjects() {
-    return allQuestions.filter(q => wrongQuestions.includes(q.id));
+function toggleFavorite(questionId) {
+    const idx = favorites.indexOf(questionId);
+    if (idx > -1) {
+        favorites.splice(idx, 1);
+    } else {
+        favorites.push(questionId);
+    }
+    saveFavorites();
+    // تحديث العرض الحالي إذا كان يعرض هذا السؤال
+    if (currentExam && !currentExam.submitted) renderExam();
+    else if (document.getElementById('readonly-screen').classList.contains('active')) {
+        // إعادة فتح نفس السؤال
+        const readonlyContent = document.getElementById('readonly-content');
+        if (readonlyContent && readonlyContent.querySelector('.question-number')) {
+            // محاولة استخراج id السؤال الحالي
+            const match = readonlyContent.innerHTML.match(/toggleFavorite\('([^']+)'/);
+            if (match) openReadonly(match[1]);
+        }
+    } else if (document.getElementById('selection-screen').classList.contains('active')) {
+        // إعادة تحميل القائمة الحالية
+        const title = document.getElementById('selection-title').textContent;
+        if (title === 'Wrong Questions') openWrongQuestions();
+        else if (title === 'Favorite Questions') openFavoriteQuestions();
+    }
 }
 
 function clearWrongQuestions() {
@@ -997,57 +1166,6 @@ function clearWrongQuestions() {
     }
 }
 
-// ============================================
-// FAVORITES
-// ============================================
-function toggleFavorite(questionId) {
-    const idx = favorites.indexOf(questionId);
-    if (idx > -1) {
-        favorites.splice(idx, 1);
-    } else {
-        favorites.push(questionId);
-    }
-    saveFavorites();
-
-    if (currentExam && !currentExam.submitted) renderExam();
-}
-
-function openFavoriteQuestions() {
-    const questions = allQuestions.filter(q => favorites.includes(q.id));
-    if (questions.length === 0) {
-        showToast('No favorite questions yet!');
-        return;
-    }
-
-    showScreen('selection-screen');
-    document.getElementById('selection-title').textContent = 'Favorite Questions';
-    document.getElementById('selection-search-container').classList.add('hidden');
-
-    const list = document.getElementById('selection-list');
-    list.innerHTML = `
-        <div style="text-align:center; padding:20px;">
-            <p style="font-size:1.1rem; font-weight:600; margin-bottom:16px;">${questions.length} favorite questions</p>
-            <div class="mode-buttons" style="max-width:400px; margin:0 auto;">
-                <button class="btn-mode" onclick="startSpecialExam(getFavoriteQuestionObjects(), 'training', 'twoway')">
-                    <span class="mode-icon">🎓</span>
-                    <span class="mode-label">Training</span>
-                </button>
-                <button class="btn-mode" onclick="startSpecialExam(getFavoriteQuestionObjects(), 'exam', 'oneway')">
-                    <span class="mode-icon">📝</span>
-                    <span class="mode-label">Exam</span>
-                </button>
-            </div>
-            <button class="btn-danger mt-20" onclick="clearFavorites()">Clear Favorites</button>
-        </div>
-    `;
-
-    document.getElementById('selection-footer').classList.add('hidden');
-}
-
-function getFavoriteQuestionObjects() {
-    return allQuestions.filter(q => favorites.includes(q.id));
-}
-
 function clearFavorites() {
     if (confirm('Clear all favorites?')) {
         favorites = [];
@@ -1057,179 +1175,34 @@ function clearFavorites() {
     }
 }
 
-function startSpecialExam(questions, mode, direction) {
-    if (questions.length === 0) {
-        showToast('No questions available');
-        return;
-    }
-
-    currentExam = {
-        mode,
-        direction: direction || 'twoway',
-        questions: shuffleArray([...questions]),
-        currentIndex: 0,
-        answers: new Array(questions.length).fill(null),
-        firstAnswers: new Array(questions.length).fill(null),
-        startTime: Date.now(),
-        totalTime: (questions.length + 5) * 60 * 1000,
-        submitted: false,
-        showAnswer: false
-    };
-
-    saveExamState();
-    showScreen('exam-screen');
-    renderExam();
-
-    if (mode === 'exam') startTimer();
-}
-
 // ============================================
-// STATISTICS (LEFT/RIGHT LAYOUT)
+// EXAM SETTINGS (داخل الامتحان)
 // ============================================
-function toggleStatistics() {
-    const panel = document.getElementById('statistics-panel');
-    panel.classList.toggle('visible');
-    if (panel.classList.contains('visible')) renderStatistics();
-}
-
-function renderStatistics() {
-    const content = document.getElementById('stats-content');
-    let html = '<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between;">';
-
-    // قسم السنوات
-    html += '<div style="flex: 1; min-width: 280px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;">';
-    html += '<h4 style="color: var(--primary); margin-bottom: 16px;">📅 Years Statistics</h4>';
-
-    allYears.forEach(year => {
-        const key = `year-${year.name}`;
-        const prog = progress[key] || { questionIds: [] };
-        const total = year.questions.length;
-        const answered = prog.questionIds ? prog.questionIds.length : 0;
-        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
-        html += `<div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-            <span style="font-weight: 500; font-size: 0.9rem;">${year.name}</span>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">${answered}/${total} (${pct}%)</span>
-        </div>`;
-    });
-
-    const yearCompleted = allYears.filter(y => {
-        const prog = progress[`year-${y.name}`] || { questionIds: [] };
-        return prog.questionIds && prog.questionIds.length >= y.questions.length;
-    }).length;
-    const yearInProgress = allYears.filter(y => {
-        const prog = progress[`year-${y.name}`] || { questionIds: [] };
-        const answered = prog.questionIds ? prog.questionIds.length : 0;
-        return answered > 0 && answered < y.questions.length;
-    }).length;
-    const yearNotStarted = allYears.length - yearCompleted - yearInProgress;
-    const totalYears = allYears.length || 1;
-    const yearCompletedPct = (yearCompleted / totalYears) * 100;
-    const yearInProgressPct = (yearInProgress / totalYears) * 100;
-
-    html += `<div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
-        <div style="width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(
-            var(--success) 0% ${yearCompletedPct}%,
-            var(--warning) ${yearCompletedPct}% ${yearCompletedPct + yearInProgressPct}%,
-            var(--border) ${yearCompletedPct + yearInProgressPct}% 100%
-        );"></div>
-        <div style="margin-top: 12px; display: flex; gap: 12px; font-size: 0.8rem;">
-            <span>✅ ${yearCompleted} Completed</span>
-            <span>🔄 ${yearInProgress} In Progress</span>
-            <span>⬜ ${yearNotStarted} Not Started</span>
-        </div>
-    </div>`;
-    html += '</div>';
-
-    // قسم المحاضرات
-    html += '<div style="flex: 1; min-width: 280px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;">';
-    html += '<h4 style="color: var(--primary); margin-bottom: 16px;">📚 Lectures Statistics</h4>';
-
-    allLectures.forEach(lecture => {
-        const key = `lecture-${lecture.name}`;
-        const prog = progress[key] || { questionIds: [] };
-        const total = lecture.questions.length;
-        const answered = prog.questionIds ? prog.questionIds.length : 0;
-        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
-        html += `<div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-            <span style="font-weight: 500; font-size: 0.9rem;">${lecture.name}</span>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">${answered}/${total} (${pct}%)</span>
-        </div>`;
-    });
-
-    const lectureCompleted = allLectures.filter(l => {
-        const prog = progress[`lecture-${l.name}`] || { questionIds: [] };
-        return prog.questionIds && prog.questionIds.length >= l.questions.length;
-    }).length;
-    const lectureInProgress = allLectures.filter(l => {
-        const prog = progress[`lecture-${l.name}`] || { questionIds: [] };
-        const answered = prog.questionIds ? prog.questionIds.length : 0;
-        return answered > 0 && answered < l.questions.length;
-    }).length;
-    const lectureNotStarted = allLectures.length - lectureCompleted - lectureInProgress;
-    const totalLectures = allLectures.length || 1;
-    const lectureCompletedPct = (lectureCompleted / totalLectures) * 100;
-    const lectureInProgressPct = (lectureInProgress / totalLectures) * 100;
-
-    html += `<div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
-        <div style="width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(
-            var(--success) 0% ${lectureCompletedPct}%,
-            var(--warning) ${lectureCompletedPct}% ${lectureCompletedPct + lectureInProgressPct}%,
-            var(--border) ${lectureCompletedPct + lectureInProgressPct}% 100%
-        );"></div>
-        <div style="margin-top: 12px; display: flex; gap: 12px; font-size: 0.8rem;">
-            <span>✅ ${lectureCompleted} Completed</span>
-            <span>🔄 ${lectureInProgress} In Progress</span>
-            <span>⬜ ${lectureNotStarted} Not Started</span>
-        </div>
-    </div>`;
-    html += '</div>';
-
-    html += '</div>';
-
-    html += `<div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
-        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">⭐ ${favorites.length} Favorites</span>
-        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">❌ ${wrongQuestions.length} Wrong</span>
-        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">📋 ${allQuestions.length} Total Qs</span>
-    </div>`;
-
-    content.innerHTML = html;
-}
-
-function resetProgress() {
-    if (confirm('Are you sure you want to reset ALL progress? This cannot be undone.')) {
-        progress = {};
-        favorites = [];
-        wrongQuestions = [];
-        localStorage.removeItem('exam-progress');
-        localStorage.removeItem('exam-favorites');
-        localStorage.removeItem('exam-wrong');
-        localStorage.removeItem('exam-state');
-        showToast('All progress has been reset');
-        renderStatistics();
+function openExamSettings() {
+    const settingsPanel = document.getElementById('settings-panel');
+    if (settingsPanel) {
+        settingsPanel.classList.toggle('visible');
+        if (settingsPanel.classList.contains('visible')) {
+            settingsPanel.style.zIndex = '1000';
+        } else {
+            settingsPanel.style.zIndex = '';
+        }
     }
 }
 
-// ============================================
-// SETTINGS
-// ============================================
-function toggleSettings() {
-    document.getElementById('settings-panel').classList.toggle('visible');
-}
-
+// دوال الإعدادات العامة
 function toggleDarkMode() {
     const isDark = document.getElementById('dark-mode-toggle').checked;
     document.documentElement.setAttribute('data-dark', isDark);
     settings.darkMode = isDark;
     saveSettings();
 }
-
 function changeTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     settings.theme = theme;
     saveSettings();
     updateStartButtonIcon();
 }
-
 function changeSound(sound) {
     const audio = document.getElementById('bg-audio');
     if (sound === 'none') {
@@ -1238,82 +1211,47 @@ function changeSound(sound) {
     } else {
         audio.src = `${sound}.mp3`;
         audio.volume = (settings.volume || 50) / 100;
-        audio.play().catch(err => {
-            console.warn('Audio play failed:', err);
-            audio.src = `audio/${sound}.mp3`;
-            audio.play().catch(e => console.warn('Alternative audio path also failed'));
-        });
+        audio.play().catch(e => console.warn('Audio play failed'));
     }
     settings.bgSound = sound;
     saveSettings();
 }
-
 function changeVolume(value) {
     const audio = document.getElementById('bg-audio');
     audio.volume = value / 100;
     settings.volume = value;
     saveSettings();
 }
-
 function toggleAnimations() {
     const enabled = document.getElementById('animations-toggle').checked;
     document.documentElement.setAttribute('data-animations', enabled);
     settings.animations = enabled;
     saveSettings();
 }
-
 function applySettings() {
     document.getElementById('dark-mode-toggle').checked = settings.darkMode || false;
     document.documentElement.setAttribute('data-dark', settings.darkMode || false);
-
     document.getElementById('theme-selector').value = settings.theme || 'default';
     document.documentElement.setAttribute('data-theme', settings.theme || 'default');
-
-    document.getElementById('sound-selector').value = settings.sound || 'none';
+    document.getElementById('sound-selector').value = settings.bgSound || 'none';
     document.getElementById('volume-control').value = settings.volume || 50;
-
     document.getElementById('animations-toggle').checked = settings.animations !== false;
     document.documentElement.setAttribute('data-animations', settings.animations !== false);
-
     updateStartButtonIcon();
 }
-
 function updateStartButtonIcon() {
     const btn = document.getElementById('btn-start-exam');
     if (!btn) return;
     const theme = settings.theme || 'default';
-    const icons = {
-        'default': '🚀',
-        'glassmorphism': '✨',
-        'minimal-dark': '🌑',
-        'medical-blue': '💉',
-        'neon': '💡',
-        'paper': '📜',
-        'soft-ivory': '🕯️',
-        'hackers': '👨‍💻',
-        'ghost': '👻',
-        'beach': '🏖️',
-        'desert': '🏜️'
-    };
+    const icons = { default:'🚀', glassmorphism:'✨', 'minimal-dark':'🌑', 'medical-blue':'💉', neon:'💡', paper:'📜', 'soft-ivory':'🕯️', hackers:'👨‍💻', ghost:'👻', beach:'🏖️', desert:'🏜️' };
     btn.textContent = `${icons[theme] || '🚀'} Start Exam`;
 }
 
 // ============================================
-// THEMED CELEBRATIONS
+// CELEBRATION (موحدة)
 // ============================================
 function showCelebration() {
     if (settings.animations === false) return;
-    const theme = settings.theme || 'default';
-    switch (theme) {
-        case 'ghost': ghostCelebration(); break;
-        case 'hackers': hackersCelebration(); break;
-        case 'beach': beachCelebration(); break;
-        case 'desert': desertCelebration(); break;
-        default: showFireworks();
-    }
-}
-
-function showFireworks() {
     const canvas = document.getElementById('fireworks-canvas');
     canvas.classList.remove('hidden');
     const ctx = canvas.getContext('2d');
@@ -1368,180 +1306,115 @@ function showFireworks() {
     animate();
 }
 
-function ghostCelebration() {
-    const canvas = document.getElementById('fireworks-canvas');
-    canvas.classList.remove('hidden');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const ghosts = [];
-    for (let i = 0; i < 15; i++) {
-        ghosts.push({
-            x: Math.random() * canvas.width,
-            y: canvas.height + 50,
-            size: 30 + Math.random() * 40,
-            speed: 1 + Math.random() * 2,
-        });
-    }
-
-    function drawGhost(x, y, size) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(0, -size/2, size/2, 0, Math.PI, true);
-        ctx.lineTo(-size/2, 0);
-        for (let i = 0; i < 3; i++) {
-            const wave = size/4;
-            ctx.quadraticCurveTo(-size/2 + wave + i*wave, wave/2, -size/2 + wave*2*i, 0);
-        }
-        ctx.lineTo(size/2, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(-size/5, -size/3, size/8, 0, Math.PI*2);
-        ctx.arc(size/5, -size/3, size/8, 0, Math.PI*2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    let frame = 0;
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ghosts.forEach(g => {
-            g.y -= g.speed;
-            drawGhost(g.x, g.y, g.size);
-        });
-        frame++;
-        if (frame < 200) requestAnimationFrame(animate);
-        else canvas.classList.add('hidden');
-    }
-    animate();
-}
-
-function hackersCelebration() {
-    const canvas = document.getElementById('fireworks-canvas');
-    canvas.classList.remove('hidden');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const chars = '01🖥️🔒💾👾☠️0101010';
-    const particles = [];
-    for (let i = 0; i < 80; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height * 0.3,
-            vx: (Math.random() - 0.5) * 3,
-            vy: 2 + Math.random() * 3,
-            char: chars[Math.floor(Math.random() * chars.length)],
-            size: 16 + Math.random() * 20,
-            life: 1
-        });
-    }
-
-    let frame = 0;
-    function animate() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life -= 0.005;
-            if (p.life > 0) {
-                ctx.fillStyle = '#00ff00';
-                ctx.font = `${p.size}px monospace`;
-                ctx.fillText(p.char, p.x, p.y);
+// ============================================
+// MODALS (بناء الحوارات)
+// ============================================
+function buildModals() {
+    if (!document.getElementById('custom-modal')) {
+        const modalDiv = document.createElement('div');
+        modalDiv.id = 'custom-modal';
+        modalDiv.className = 'custom-modal hidden';
+        modalDiv.innerHTML = `
+            <div class="custom-modal-content">
+                <h3 id="modal-title"></h3>
+                <div id="modal-body"></div>
+                <div id="modal-buttons" class="modal-buttons"></div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        
+        const style = document.createElement('style');
+        style.textContent = `
+            .custom-modal {
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                backdrop-filter: blur(4px);
             }
-        });
-        frame++;
-        if (frame < 180) requestAnimationFrame(animate);
-        else canvas.classList.add('hidden');
+            .custom-modal.hidden { display: none; }
+            .custom-modal-content {
+                background: var(--bg-card);
+                border-radius: var(--radius);
+                padding: 24px;
+                max-width: 400px;
+                width: 90%;
+                text-align: center;
+                box-shadow: var(--shadow-lg);
+                border: 1px solid var(--border);
+                direction: rtl;
+            }
+            .custom-modal-content h3 {
+                margin-bottom: 16px;
+                color: var(--primary);
+            }
+            .modal-buttons {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+                margin-top: 24px;
+                flex-wrap: wrap;
+            }
+            .modal-buttons button {
+                padding: 10px 20px;
+                border-radius: var(--radius-xs);
+                font-size: 0.9rem;
+                font-weight: 600;
+                cursor: pointer;
+            }
+        `;
+        document.head.appendChild(style);
     }
-    animate();
-}
-
-function beachCelebration() {
-    const canvas = document.getElementById('fireworks-canvas');
-    canvas.classList.remove('hidden');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const bubbles = [];
-    for (let i = 0; i < 50; i++) {
-        bubbles.push({
-            x: Math.random() * canvas.width,
-            y: canvas.height + 20,
-            radius: 5 + Math.random() * 20,
-            speed: 1 + Math.random() * 2,
-            color: `rgba(255, 255, 255, ${Math.random() * 0.6 + 0.2})`
-        });
-    }
-
-    let frame = 0;
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        bubbles.forEach(b => {
-            b.y -= b.speed;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = b.color;
-            ctx.fill();
-        });
-        frame++;
-        if (frame < 250) requestAnimationFrame(animate);
-        else canvas.classList.add('hidden');
-    }
-    animate();
-}
-
-function desertCelebration() {
-    const canvas = document.getElementById('fireworks-canvas');
-    canvas.classList.remove('hidden');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const sands = [];
-    for (let i = 0; i < 60; i++) {
-        sands.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height * 0.4,
-            vx: (Math.random() - 0.5) * 2,
-            vy: 1 + Math.random() * 2,
-            size: 2 + Math.random() * 5,
-            color: `rgba(210, 180, 140, ${Math.random() * 0.7 + 0.3})`
-        });
-    }
-
-    let frame = 0;
-    function animate() {
-        ctx.fillStyle = 'rgba(253, 245, 230, 0.15)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        sands.forEach(s => {
-            s.x += s.vx;
-            s.y += s.vy;
-            ctx.fillStyle = s.color;
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
-            ctx.fill();
-        });
-        frame++;
-        if (frame < 200) requestAnimationFrame(animate);
-        else canvas.classList.add('hidden');
-    }
-    animate();
 }
 
 // ============================================
-// LOCAL STORAGE
+// RESUME EXAM ON LOAD (مودال مخصص)
+// ============================================
+function checkResumeExam() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('exam-state'));
+        if (saved && !saved.submitted) {
+            showResumeModal(saved);
+        }
+    } catch(e) { clearExamState(); }
+}
+
+function showResumeModal(savedExam) {
+    const modal = document.getElementById('custom-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+    
+    modalTitle.textContent = 'استئناف الامتحان';
+    modalBody.innerHTML = '<p>لديك امتحان غير مكتمل، هل تريد الاستمرار؟</p>';
+    modalButtons.innerHTML = `
+        <button class="btn-secondary" id="resume-no">لا</button>
+        <button class="btn-primary" id="resume-yes">نعم</button>
+    `;
+    modal.classList.remove('hidden');
+    
+    document.getElementById('resume-yes').onclick = () => {
+        modal.classList.add('hidden');
+        currentExam = savedExam;
+        showScreen('exam-screen');
+        renderExam();
+        if (savedExam.mode === 'exam') startTimer();
+    };
+    document.getElementById('resume-no').onclick = () => {
+        modal.classList.add('hidden');
+        clearExamState();
+        goHome();
+    };
+}
+
+// ============================================
+// LOCAL STORAGE (حفظ التقدم)
 // ============================================
 function saveSettings() { localStorage.setItem('exam-settings', JSON.stringify(settings)); }
 function loadSettings() { try { settings = JSON.parse(localStorage.getItem('exam-settings')) || {}; } catch { settings = {}; } }
-
 function saveProgress() {
     if (!currentExam) return;
     const { questions, firstAnswers } = currentExam;
@@ -1555,7 +1428,9 @@ function saveProgress() {
                 progress[key].questionIds.push(q.id);
                 progress[key].answered = progress[key].questionIds.length;
             }
-            if (isAnswerCorrect(q, firstAnswers[i]) && !progress[key].correctIds.includes(q.id)) {
+            const selectedText = q.shuffledOptions[firstAnswers[i]].substring(2).trim();
+            const isCorrect = (selectedText === q.originalCorrectText);
+            if (isCorrect && !progress[key].correctIds.includes(q.id)) {
                 progress[key].correctIds.push(q.id);
                 progress[key].correct = progress[key].correctIds.length;
             }
@@ -1570,31 +1445,10 @@ function saveWrongQuestions() { localStorage.setItem('exam-wrong', JSON.stringif
 function loadWrongQuestions() { try { wrongQuestions = JSON.parse(localStorage.getItem('exam-wrong')) || []; } catch { wrongQuestions = []; } }
 function saveExamState() { if (currentExam) localStorage.setItem('exam-state', JSON.stringify(currentExam)); }
 function clearExamState() { localStorage.removeItem('exam-state'); }
-function checkResumeExam() {
-    try {
-        const saved = JSON.parse(localStorage.getItem('exam-state'));
-        if (saved && !saved.submitted) {
-            if (confirm('You have an unfinished exam. Would you like to resume?')) {
-                currentExam = saved;
-                showScreen('exam-screen');
-                renderExam();
-                if (saved.mode === 'exam') startTimer();
-            } else clearExamState();
-        }
-    } catch { clearExamState(); }
-}
 
 // ============================================
 // UTILITIES
 // ============================================
-function isAnswerCorrect(question, answerIndex) {
-    if (answerIndex === null || answerIndex === undefined) return false;
-    return answerIndex === getCorrectIndex(question);
-}
-function getCorrectIndex(question) {
-    const correctLetter = question.correctAnswer.charAt(0).toUpperCase();
-    return ['A', 'B', 'C', 'D', 'E'].indexOf(correctLetter);
-}
 function shuffleArray(array) {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -1613,4 +1467,4 @@ function showToast(message) {
         toast.classList.remove('visible');
         toast.classList.add('hidden');
     }, 3000);
-}
+           }
