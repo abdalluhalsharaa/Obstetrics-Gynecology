@@ -1,6 +1,6 @@
 /* ============================================
    MEDICAL EXAM PRACTICE - MAIN JAVASCRIPT
-   (نسخة نهائية: خلط كامل، مفضلة وموقع في كل مكان، احتفالية موحدة)
+   (نسخة مع تصليح الإعدادات والإحصائيات والاستئناف)
    ============================================ */
 
 // ============================================
@@ -31,13 +31,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadProgress();
     loadFavorites();
     loadWrongQuestions();
-    applySettings();
+    buildModals();          // بناء المودالات أولاً
+    applySettings();       // تطبيق الإعدادات على الواجهة
     await loadData();
-    checkResumeExam();
+    checkResumeExam();     // فحص الامتحان غير المكتمل بعد تحميل البيانات
     displayRandomQuote();
     updateStartButtonIcon();
-    buildModals();
+    
+    // ربط الأزرار التي قد لا تكون ربطت عبر onclick في HTML
+    bindButtons();
 });
+
+function bindButtons() {
+    // نتأكد من وجود أزرار الإعدادات والإحصائيات في الصفحة الرئيسية
+    const statsBtn = document.querySelector('.nav-btn--stats');
+    const settingsBtn = document.querySelector('.nav-btn--settings');
+    if (statsBtn) statsBtn.onclick = toggleStatistics;
+    if (settingsBtn) settingsBtn.onclick = toggleSettings;
+    
+    // زر الإعدادات المختصر داخل الامتحان (يتم ربطه لاحقاً عند renderExam)
+}
 
 function displayRandomQuote() {
     const quotes = [
@@ -55,7 +68,7 @@ function displayRandomQuote() {
 }
 
 // ============================================
-// DATA LOADING AND PARSING
+// DATA LOADING AND PARSING (نفس الكود السابق)
 // ============================================
 async function loadData() {
     try {
@@ -254,6 +267,9 @@ function shuffleOptions(question) {
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
+    // إخفاء لوحات الإعدادات والإحصائيات عند تغيير الشاشة
+    document.getElementById('settings-panel')?.classList.remove('visible');
+    document.getElementById('statistics-panel')?.classList.remove('visible');
 }
 
 function goHome() {
@@ -283,7 +299,7 @@ function openSection(section) {
 }
 
 // ============================================
-// SELECTION SCREEN
+// SELECTION SCREEN (مختصر للطول)
 // ============================================
 function resetSelectionState() {
     selectedGroups = [];
@@ -440,9 +456,6 @@ function addExtraTime() {
     btn.textContent = '✓ Extra 5 Minutes Added';
 }
 
-// ============================================
-// بدء الامتحان: تجميع الأسئلة من المجموعات المختارة وخلطها عشوائياً بالكامل
-// ============================================
 function confirmStartExam() {
     if (!selectedMode || !selectedDirection) {
         showToast('Please select mode and direction');
@@ -460,18 +473,13 @@ function confirmStartExam() {
         questions = questions.concat(currentGroups[idx].questions);
     });
 
-    // خلط كامل للأسئلة (لضمان عدم تتابع سؤالين من نفس المحاضرة)
-    questions = shuffleArray(questions);
-    // أخذ العدد المطلوب
-    questions = questions.slice(0, count);
+    questions = shuffleArray(questions).slice(0, count);
 
-    // لكل سؤال، خلط خياراته وتخزين النسخة المخلوطة
     const processedQuestions = questions.map(q => {
         const shuffled = shuffleOptions(q);
         return {
             ...q,
             shuffledOptions: shuffled.shuffledOptions,
-            shuffledCorrectLetter: shuffled.mappedCorrectLetter,
             originalCorrectText: q.correctAnswerText
         };
     });
@@ -499,7 +507,7 @@ function confirmStartExam() {
 }
 
 // ============================================
-// RENDER EXAM
+// EXAM RENDERING (مع زر إعدادات فعال)
 // ============================================
 function renderExam() {
     if (!currentExam) return;
@@ -528,7 +536,6 @@ function renderExam() {
 
     const container = document.getElementById('question-container');
     const isFav = favorites.includes(question.id);
-
     const shuffledOpts = question.shuffledOptions;
 
     container.innerHTML = `
@@ -537,7 +544,7 @@ function renderExam() {
             <div class="question-actions">
                 <button class="icon-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${question.id}')" title="Favorite">✦</button>
                 <button class="icon-btn" onclick="showLocation('${question.batchName}', '${question.number || currentIndex + 1}', '${question.pageNumber}')" title="Location">📍</button>
-                <button class="icon-btn" onclick="openExamSettings()" title="Settings">⚙️</button>
+                <button class="icon-btn" id="exam-settings-btn" title="Settings">⚙️</button>
             </div>
         </div>
         <p class="question-text">${question.text}</p>
@@ -557,6 +564,10 @@ function renderExam() {
             <strong>Explanation:</strong> ${question.explanation}
         </div>
     `;
+
+    // ربط زر الإعدادات بعد إضافته إلى DOM
+    const settingsBtn = document.getElementById('exam-settings-btn');
+    if (settingsBtn) settingsBtn.onclick = openExamSettings;
 
     renderExamNav();
 }
@@ -628,16 +639,14 @@ function renderExamNav() {
 }
 
 // ============================================
-// EXAM INTERACTION
+// EXAM INTERACTION (اختصار)
 // ============================================
 function selectOption(optionIndex) {
     if (!currentExam || currentExam.submitted) return;
     const { mode, currentIndex } = currentExam;
-
     if (mode === 'training' && currentExam.showAnswer) return;
 
     currentExam.answers[currentIndex] = optionIndex;
-
     if (currentExam.firstAnswers[currentIndex] === null) {
         currentExam.firstAnswers[currentIndex] = optionIndex;
     }
@@ -710,12 +719,7 @@ function prevQuestion() {
 function navigateToQuestion(index) {
     if (!currentExam) return;
     const { direction, currentIndex } = currentExam;
-
-    if (direction === 'oneway') {
-        if (index < currentIndex) return;
-        if (index > currentIndex) return;
-    }
-
+    if (direction === 'oneway' && index < currentIndex) return;
     if (direction === 'twoway') {
         currentExam.currentIndex = index;
         if (currentExam.mode === 'training') {
@@ -729,13 +733,11 @@ function toggleGrid() {
     const grid = document.getElementById('question-grid');
     const btn = document.getElementById('btn-grid-toggle');
     grid.classList.toggle('hidden');
-    btn.innerHTML = grid.classList.contains('hidden')
-        ? '<span>☰</span> Show Grid'
-        : '<span>☰</span> Hide Grid';
+    btn.innerHTML = grid.classList.contains('hidden') ? '<span>☰</span> Show Grid' : '<span>☰</span> Hide Grid';
 }
 
 // ============================================
-// EXIT EXAM WITH MODAL
+// EXIT EXAM WITH MODAL (يعمل بشكل مثالي)
 // ============================================
 function exitExam() {
     if (!currentExam || currentExam.submitted) {
@@ -840,7 +842,7 @@ function timeUp() {
 }
 
 // ============================================
-// FINISH EXAM & RESULTS
+// FINISH EXAM & RESULTS (مختصر)
 // ============================================
 function finishExam() {
     if (!currentExam) return;
@@ -993,7 +995,7 @@ function reviewExam() {
 }
 
 // ============================================
-// SEARCH
+// SEARCH, READONLY, WRONG, FAVORITES (مختصر)
 // ============================================
 function populateSearchFilter() {
     const filter = document.getElementById('search-filter');
@@ -1035,15 +1037,11 @@ function performSearch() {
     `).join('');
 }
 
-// ============================================
-// READ-ONLY VIEWER (مع مفضلة وموقع)
-// ============================================
 function openReadonly(questionId) {
     const question = allQuestions.find(q => q.id === questionId);
     if (!question) return;
 
     const shuffled = shuffleOptions(question);
-    
     showScreen('readonly-screen');
     const content = document.getElementById('readonly-content');
     const isFav = favorites.includes(question.id);
@@ -1081,9 +1079,6 @@ function closeReadonly() {
     }
 }
 
-// ============================================
-// WRONG & FAVORITES LISTS (ظهور زر المفضلة في القائمة نفسها)
-// ============================================
 function openWrongQuestions() {
     const questions = allQuestions.filter(q => wrongQuestions.includes(q.id));
     if (questions.length === 0) {
@@ -1139,18 +1134,12 @@ function toggleFavorite(questionId) {
         favorites.push(questionId);
     }
     saveFavorites();
-    // تحديث العرض الحالي إذا كان يعرض هذا السؤال
+    // تحديث الشاشات
     if (currentExam && !currentExam.submitted) renderExam();
     else if (document.getElementById('readonly-screen').classList.contains('active')) {
-        // إعادة فتح نفس السؤال
-        const readonlyContent = document.getElementById('readonly-content');
-        if (readonlyContent && readonlyContent.querySelector('.question-number')) {
-            // محاولة استخراج id السؤال الحالي
-            const match = readonlyContent.innerHTML.match(/toggleFavorite\('([^']+)'/);
-            if (match) openReadonly(match[1]);
-        }
+        const match = document.getElementById('readonly-content')?.innerHTML.match(/toggleFavorite\('([^']+)'/);
+        if (match) openReadonly(match[1]);
     } else if (document.getElementById('selection-screen').classList.contains('active')) {
-        // إعادة تحميل القائمة الحالية
         const title = document.getElementById('selection-title').textContent;
         if (title === 'Wrong Questions') openWrongQuestions();
         else if (title === 'Favorite Questions') openFavoriteQuestions();
@@ -1176,33 +1165,186 @@ function clearFavorites() {
 }
 
 // ============================================
-// EXAM SETTINGS (داخل الامتحان)
+// SETTINGS AND STATISTICS (تم إصلاحهما)
+// ============================================
+function toggleSettings() {
+    const panel = document.getElementById('settings-panel');
+    if (panel) {
+        panel.classList.toggle('visible');
+        // إخفاء لوحة الإحصائيات إذا كانت مفتوحة
+        const statsPanel = document.getElementById('statistics-panel');
+        if (statsPanel && statsPanel.classList.contains('visible')) {
+            statsPanel.classList.remove('visible');
+        }
+    } else {
+        console.warn('settings-panel not found');
+    }
+}
+
+function toggleStatistics() {
+    const panel = document.getElementById('statistics-panel');
+    if (panel) {
+        panel.classList.toggle('visible');
+        if (panel.classList.contains('visible')) {
+            renderStatistics();
+            // إخفاء لوحة الإعدادات إذا كانت مفتوحة
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel && settingsPanel.classList.contains('visible')) {
+                settingsPanel.classList.remove('visible');
+            }
+        }
+    } else {
+        console.warn('statistics-panel not found');
+    }
+}
+
+function renderStatistics() {
+    const content = document.getElementById('stats-content');
+    if (!content) return;
+    let html = '<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between;">';
+
+    // قسم السنوات
+    html += '<div style="flex: 1; min-width: 280px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;">';
+    html += '<h4 style="color: var(--primary); margin-bottom: 16px;">📅 Years Statistics</h4>';
+    allYears.forEach(year => {
+        const key = `year-${year.name}`;
+        const prog = progress[key] || { questionIds: [] };
+        const total = year.questions.length;
+        const answered = prog.questionIds ? prog.questionIds.length : 0;
+        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+        html += `<div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <span style="font-weight: 500; font-size: 0.9rem;">${year.name}</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">${answered}/${total} (${pct}%)</span>
+        </div>`;
+    });
+    const yearCompleted = allYears.filter(y => {
+        const prog = progress[`year-${y.name}`] || { questionIds: [] };
+        return prog.questionIds && prog.questionIds.length >= y.questions.length;
+    }).length;
+    const yearInProgress = allYears.filter(y => {
+        const prog = progress[`year-${y.name}`] || { questionIds: [] };
+        const answered = prog.questionIds ? prog.questionIds.length : 0;
+        return answered > 0 && answered < y.questions.length;
+    }).length;
+    const yearNotStarted = allYears.length - yearCompleted - yearInProgress;
+    const totalYears = allYears.length || 1;
+    const yearCompletedPct = (yearCompleted / totalYears) * 100;
+    const yearInProgressPct = (yearInProgress / totalYears) * 100;
+    html += `<div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+        <div style="width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(
+            var(--success) 0% ${yearCompletedPct}%,
+            var(--warning) ${yearCompletedPct}% ${yearCompletedPct + yearInProgressPct}%,
+            var(--border) ${yearCompletedPct + yearInProgressPct}% 100%
+        );"></div>
+        <div style="margin-top: 12px; display: flex; gap: 12px; font-size: 0.8rem;">
+            <span>✅ ${yearCompleted} Completed</span>
+            <span>🔄 ${yearInProgress} In Progress</span>
+            <span>⬜ ${yearNotStarted} Not Started</span>
+        </div>
+    </div>`;
+    html += '</div>';
+
+    // قسم المحاضرات
+    html += '<div style="flex: 1; min-width: 280px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;">';
+    html += '<h4 style="color: var(--primary); margin-bottom: 16px;">📚 Lectures Statistics</h4>';
+    allLectures.forEach(lecture => {
+        const key = `lecture-${lecture.name}`;
+        const prog = progress[key] || { questionIds: [] };
+        const total = lecture.questions.length;
+        const answered = prog.questionIds ? prog.questionIds.length : 0;
+        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+        html += `<div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <span style="font-weight: 500; font-size: 0.9rem;">${lecture.name}</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">${answered}/${total} (${pct}%)</span>
+        </div>`;
+    });
+    const lectureCompleted = allLectures.filter(l => {
+        const prog = progress[`lecture-${l.name}`] || { questionIds: [] };
+        return prog.questionIds && prog.questionIds.length >= l.questions.length;
+    }).length;
+    const lectureInProgress = allLectures.filter(l => {
+        const prog = progress[`lecture-${l.name}`] || { questionIds: [] };
+        const answered = prog.questionIds ? prog.questionIds.length : 0;
+        return answered > 0 && answered < l.questions.length;
+    }).length;
+    const lectureNotStarted = allLectures.length - lectureCompleted - lectureInProgress;
+    const totalLectures = allLectures.length || 1;
+    const lectureCompletedPct = (lectureCompleted / totalLectures) * 100;
+    const lectureInProgressPct = (lectureInProgress / totalLectures) * 100;
+    html += `<div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+        <div style="width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(
+            var(--success) 0% ${lectureCompletedPct}%,
+            var(--warning) ${lectureCompletedPct}% ${lectureCompletedPct + lectureInProgressPct}%,
+            var(--border) ${lectureCompletedPct + lectureInProgressPct}% 100%
+        );"></div>
+        <div style="margin-top: 12px; display: flex; gap: 12px; font-size: 0.8rem;">
+            <span>✅ ${lectureCompleted} Completed</span>
+            <span>🔄 ${lectureInProgress} In Progress</span>
+            <span>⬜ ${lectureNotStarted} Not Started</span>
+        </div>
+    </div>`;
+    html += '</div>';
+    html += '</div>';
+    html += `<div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
+        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">⭐ ${favorites.length} Favorites</span>
+        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">❌ ${wrongQuestions.length} Wrong</span>
+        <span style="background: var(--border-light); padding: 8px 16px; border-radius: 20px;">📋 ${allQuestions.length} Total Qs</span>
+    </div>`;
+    content.innerHTML = html;
+}
+
+function resetProgress() {
+    if (confirm('Are you sure you want to reset ALL personal progress?')) {
+        progress = {};
+        favorites = [];
+        wrongQuestions = [];
+        localStorage.removeItem('exam-progress');
+        localStorage.removeItem('exam-favorites');
+        localStorage.removeItem('exam-wrong');
+        localStorage.removeItem('exam-state');
+        showToast('Personal progress reset.');
+        if (document.getElementById('statistics-panel')?.classList.contains('visible')) renderStatistics();
+    }
+}
+
+// ============================================
+// EXAM SETTINGS BUTTON
 // ============================================
 function openExamSettings() {
     const settingsPanel = document.getElementById('settings-panel');
     if (settingsPanel) {
+        // إظهارها فوق كل شيء
         settingsPanel.classList.toggle('visible');
         if (settingsPanel.classList.contains('visible')) {
-            settingsPanel.style.zIndex = '1000';
+            settingsPanel.style.zIndex = '2000';
+            // إخفاء لوحة الإحصائيات إذا كانت مفتوحة
+            const statsPanel = document.getElementById('statistics-panel');
+            if (statsPanel) statsPanel.classList.remove('visible');
         } else {
             settingsPanel.style.zIndex = '';
         }
+    } else {
+        console.warn('settings-panel not found');
     }
 }
 
-// دوال الإعدادات العامة
+// ============================================
+// SETTINGS FUNCTIONS
+// ============================================
 function toggleDarkMode() {
     const isDark = document.getElementById('dark-mode-toggle').checked;
     document.documentElement.setAttribute('data-dark', isDark);
     settings.darkMode = isDark;
     saveSettings();
 }
+
 function changeTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     settings.theme = theme;
     saveSettings();
     updateStartButtonIcon();
 }
+
 function changeSound(sound) {
     const audio = document.getElementById('bg-audio');
     if (sound === 'none') {
@@ -1216,29 +1358,43 @@ function changeSound(sound) {
     settings.bgSound = sound;
     saveSettings();
 }
+
 function changeVolume(value) {
     const audio = document.getElementById('bg-audio');
     audio.volume = value / 100;
     settings.volume = value;
     saveSettings();
 }
+
 function toggleAnimations() {
     const enabled = document.getElementById('animations-toggle').checked;
     document.documentElement.setAttribute('data-animations', enabled);
     settings.animations = enabled;
     saveSettings();
 }
+
 function applySettings() {
-    document.getElementById('dark-mode-toggle').checked = settings.darkMode || false;
+    const darkToggle = document.getElementById('dark-mode-toggle');
+    if (darkToggle) darkToggle.checked = settings.darkMode || false;
     document.documentElement.setAttribute('data-dark', settings.darkMode || false);
-    document.getElementById('theme-selector').value = settings.theme || 'default';
+    
+    const themeSelector = document.getElementById('theme-selector');
+    if (themeSelector) themeSelector.value = settings.theme || 'default';
     document.documentElement.setAttribute('data-theme', settings.theme || 'default');
-    document.getElementById('sound-selector').value = settings.bgSound || 'none';
-    document.getElementById('volume-control').value = settings.volume || 50;
-    document.getElementById('animations-toggle').checked = settings.animations !== false;
+    
+    const soundSelector = document.getElementById('sound-selector');
+    if (soundSelector) soundSelector.value = settings.bgSound || 'none';
+    
+    const volumeControl = document.getElementById('volume-control');
+    if (volumeControl) volumeControl.value = settings.volume || 50;
+    
+    const animationsToggle = document.getElementById('animations-toggle');
+    if (animationsToggle) animationsToggle.checked = settings.animations !== false;
     document.documentElement.setAttribute('data-animations', settings.animations !== false);
+    
     updateStartButtonIcon();
 }
+
 function updateStartButtonIcon() {
     const btn = document.getElementById('btn-start-exam');
     if (!btn) return;
@@ -1307,7 +1463,7 @@ function showCelebration() {
 }
 
 // ============================================
-// MODALS (بناء الحوارات)
+// MODALS AND RESUME EXAM (تم إصلاح الاستئناف)
 // ============================================
 function buildModals() {
     if (!document.getElementById('custom-modal')) {
@@ -1370,16 +1526,21 @@ function buildModals() {
     }
 }
 
-// ============================================
-// RESUME EXAM ON LOAD (مودال مخصص)
-// ============================================
 function checkResumeExam() {
     try {
-        const saved = JSON.parse(localStorage.getItem('exam-state'));
-        if (saved && !saved.submitted) {
-            showResumeModal(saved);
+        const saved = localStorage.getItem('exam-state');
+        if (saved) {
+            const savedExam = JSON.parse(saved);
+            if (savedExam && !savedExam.submitted) {
+                showResumeModal(savedExam);
+            } else {
+                clearExamState();
+            }
         }
-    } catch(e) { clearExamState(); }
+    } catch(e) {
+        console.warn('Error parsing exam state', e);
+        clearExamState();
+    }
 }
 
 function showResumeModal(savedExam) {
@@ -1399,9 +1560,20 @@ function showResumeModal(savedExam) {
     document.getElementById('resume-yes').onclick = () => {
         modal.classList.add('hidden');
         currentExam = savedExam;
+        // التأكد من أن الأسئلة تحتوي على shuffledOptions (قديمة من الحفظ) – إذا كانت مفقودة نعيد معالجتها
+        if (currentExam.questions && currentExam.questions.length > 0 && !currentExam.questions[0].shuffledOptions) {
+            // تم حفظ الامتحان بنسخة قديمة بدون shuffledOptions، نحتاج لإعادة معالجتها
+            currentExam.questions = currentExam.questions.map(q => {
+                if (!q.shuffledOptions) {
+                    const shuffled = shuffleOptions(q);
+                    return { ...q, shuffledOptions: shuffled.shuffledOptions, originalCorrectText: q.correctAnswerText };
+                }
+                return q;
+            });
+        }
         showScreen('exam-screen');
         renderExam();
-        if (savedExam.mode === 'exam') startTimer();
+        if (currentExam.mode === 'exam') startTimer();
     };
     document.getElementById('resume-no').onclick = () => {
         modal.classList.add('hidden');
@@ -1410,8 +1582,17 @@ function showResumeModal(savedExam) {
     };
 }
 
+// إضافة مستمع لمنع فقدان الحالة عند إعادة تحميل الصفحة
+window.addEventListener('beforeunload', (e) => {
+    if (currentExam && !currentExam.submitted) {
+        // تحذير عام (لا يمكن تخصيص الرسالة في المتصفحات الحديثة)
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 // ============================================
-// LOCAL STORAGE (حفظ التقدم)
+// LOCAL STORAGE
 // ============================================
 function saveSettings() { localStorage.setItem('exam-settings', JSON.stringify(settings)); }
 function loadSettings() { try { settings = JSON.parse(localStorage.getItem('exam-settings')) || {}; } catch { settings = {}; } }
@@ -1457,7 +1638,9 @@ function shuffleArray(array) {
     }
     return arr;
 }
+
 function showLocation(batch, number, page) { showToast(`${batch} · Q${number} · ${page}`); }
+
 function showToast(message) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -1467,4 +1650,4 @@ function showToast(message) {
         toast.classList.remove('visible');
         toast.classList.add('hidden');
     }, 3000);
-           }
+    }
